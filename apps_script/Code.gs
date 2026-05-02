@@ -7,33 +7,30 @@
 
 const CLAUDE_MODEL = "claude-haiku-4-5-20251001";
 const MAX_CONTEXT_CHUNKS = 8;
+const MAX_HISTORY_MESSAGES = 20; // keep last 10 turns
 
 function doPost(e) {
-  const cors = ContentService.createTextOutput();
-
   try {
     const body = JSON.parse(e.postData.contents);
-    const question = (body.question || "").trim();
-    const chunks   = (body.chunks  || []).slice(0, MAX_CONTEXT_CHUNKS);
+    const messages = (body.messages || []).slice(-MAX_HISTORY_MESSAGES);
+    const chunks   = (body.chunks   || []).slice(0, MAX_CONTEXT_CHUNKS);
 
-    if (!question) {
-      return respond({ error: "No question provided." });
-    }
+    if (!messages.length) return respond({ error: "No messages provided." });
 
-    // Build context block from sermon chunks
-    const contextText = chunks.map((c, i) =>
-      `[${i + 1}] ${c.sermon_title} (${c.date} — ${c.speaker})\n${c.text}`
-    ).join("\n\n---\n\n");
+    // Build sermon context for the system prompt
+    const contextText = chunks.length
+      ? chunks.map((c, i) =>
+          `[${i + 1}] ${c.sermon_title} (${c.date} — ${c.speaker})\n${c.text}`
+        ).join("\n\n---\n\n")
+      : "(No matching sermon excerpts found for this question.)";
 
     const systemPrompt =
       "You are a helpful assistant for Westside church of Christ. " +
-      "Answer questions based on the sermon excerpts provided. " +
-      "Be conversational and concise. " +
-      "If the answer isn't in the provided excerpts, say so honestly. " +
-      "When referencing a specific sermon, mention its title naturally in your response.";
-
-    const userMessage =
-      `Here are relevant sermon excerpts:\n\n${contextText}\n\n---\n\nQuestion: ${question}`;
+      "Answer questions based on the sermon excerpts below. " +
+      "Be conversational, warm, and concise. Maintain context across the conversation. " +
+      "If the answer isn't clearly supported by the excerpts, say so honestly rather than speculating. " +
+      "When citing a specific sermon, mention its title naturally.\n\n" +
+      "Relevant sermon excerpts for the latest question:\n\n" + contextText;
 
     const apiKey = PropertiesService.getScriptProperties().getProperty("ANTHROPIC_API_KEY");
     if (!apiKey) throw new Error("ANTHROPIC_API_KEY not set in Script Properties.");
@@ -49,7 +46,7 @@ function doPost(e) {
         model: CLAUDE_MODEL,
         max_tokens: 1024,
         system: systemPrompt,
-        messages: [{ role: "user", content: userMessage }],
+        messages: messages,
       }),
       muteHttpExceptions: true,
     });
@@ -59,7 +56,7 @@ function doPost(e) {
 
     const answer = result.content[0].text;
 
-    // Deduplicated source list from the chunks
+    // Deduplicated source list
     const seen = new Set();
     const sources = chunks
       .filter(c => { const k = c.audio_url; if (seen.has(k)) return false; seen.add(k); return true; })
@@ -78,12 +75,12 @@ function respond(data) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
-// Test this function in the Apps Script editor to verify your API key works
+// Test in the Apps Script editor to verify your API key works
 function testPost() {
   const result = doPost({
     postData: {
       contents: JSON.stringify({
-        question: "What does the sermon say about faith?",
+        messages: [{ role: "user", content: "What does the sermon say about faith?" }],
         chunks: [{
           text: "Faith means trusting God even when we cannot see the outcome.",
           sermon_title: "Test Sermon",

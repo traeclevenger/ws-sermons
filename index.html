@@ -89,43 +89,73 @@
   .btn-expand { background: transparent; color: var(--subtext); border: none; padding: 0; font-size: 0.75rem; cursor: pointer; text-decoration: underline; text-decoration-color: var(--border); }
   .btn-expand:hover { color: var(--accent); }
 
-  /* ASK TAB */
-  #askView { display: none; }
-  .ask-form { display: flex; gap: 10px; margin-bottom: 20px; }
-  #askInput {
-    flex: 1; padding: 12px 16px; background: var(--surface); border: 1px solid var(--border);
-    border-radius: 10px; color: var(--text); font-size: 0.95rem; outline: none;
-    transition: border-color 0.2s; resize: none; min-height: 52px; max-height: 160px;
-    font-family: inherit;
-  }
-  #askInput:focus { border-color: var(--accent2); }
-  #askInput::placeholder { color: var(--subtext); }
-  #askBtn {
-    padding: 12px 20px; background: var(--accent2); color: #fff; border: none;
-    border-radius: 10px; font-size: 0.9rem; font-weight: 700; cursor: pointer;
-    transition: background 0.15s; white-space: nowrap; align-self: flex-end;
-  }
-  #askBtn:hover:not(:disabled) { background: var(--accent); }
-  #askBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+  /* ASK TAB — chat layout */
+  #askView { display: none; flex-direction: column; height: calc(100vh - 170px); }
+  #askView.active { display: flex; }
 
-  .answer-card {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 20px; margin-bottom: 16px;
-    box-shadow: var(--card-shadow);
+  .chat-toolbar { display: flex; justify-content: flex-end; padding: 0 0 10px; }
+  .btn-new-chat {
+    background: transparent; border: 1px solid var(--border); color: var(--subtext);
+    border-radius: 8px; padding: 5px 12px; font-size: 0.78rem; cursor: pointer;
+    transition: all 0.15s;
   }
-  .answer-text { font-size: 0.95rem; line-height: 1.7; color: var(--text); white-space: pre-wrap; }
-  .answer-sources { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
-  .answer-sources-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--subtext); margin-bottom: 8px; }
+  .btn-new-chat:hover { color: var(--text); border-color: var(--accent2); }
+
+  .chat-messages {
+    flex: 1; overflow-y: auto; padding: 4px 0 16px;
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .chat-messages::-webkit-scrollbar { width: 4px; }
+  .chat-messages::-webkit-scrollbar-track { background: transparent; }
+  .chat-messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .msg { display: flex; flex-direction: column; max-width: 85%; }
+  .msg.user { align-self: flex-end; align-items: flex-end; }
+  .msg.assistant { align-self: flex-start; align-items: flex-start; }
+
+  .msg-bubble {
+    padding: 11px 15px; border-radius: 16px; font-size: 0.9rem; line-height: 1.6;
+    white-space: pre-wrap; word-break: break-word;
+  }
+  .msg.user .msg-bubble {
+    background: var(--accent2); color: #fff;
+    border-bottom-right-radius: 4px;
+  }
+  .msg.assistant .msg-bubble {
+    background: var(--surface); border: 1px solid var(--border); color: var(--text);
+    border-bottom-left-radius: 4px;
+  }
+  .msg-sources { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 4px; }
   .source-chip {
-    display: inline-flex; align-items: center; gap: 6px;
-    padding: 5px 10px; margin: 3px 4px 3px 0;
-    background: rgba(150,170,158,0.1); border: 1px solid var(--border);
-    border-radius: 8px; font-size: 0.78rem; color: var(--accent); text-decoration: none;
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 9px; background: rgba(150,170,158,0.1); border: 1px solid var(--border);
+    border-radius: 7px; font-size: 0.74rem; color: var(--accent); text-decoration: none;
     transition: all 0.15s;
   }
   .source-chip:hover { background: rgba(150,170,158,0.2); border-color: var(--accent2); }
 
-  .ask-status { font-size: 0.85rem; color: var(--subtext); padding: 12px 0; min-height: 2em; }
+  .msg-typing .msg-bubble { color: var(--subtext); font-style: italic; }
+
+  .chat-input-wrap {
+    display: flex; gap: 8px; padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+  #askInput {
+    flex: 1; padding: 11px 14px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; color: var(--text); font-size: 0.9rem; outline: none;
+    transition: border-color 0.2s; resize: none; min-height: 44px; max-height: 140px;
+    font-family: inherit; line-height: 1.4;
+  }
+  #askInput:focus { border-color: var(--accent2); }
+  #askInput::placeholder { color: var(--subtext); }
+  #askBtn {
+    width: 44px; height: 44px; flex-shrink: 0; align-self: flex-end;
+    background: var(--accent2); color: #fff; border: none; border-radius: 12px;
+    cursor: pointer; transition: background 0.15s; display: flex; align-items: center; justify-content: center;
+  }
+  #askBtn:hover:not(:disabled) { background: var(--accent); }
+  #askBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+
   .ask-setup { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; color: var(--subtext); line-height: 1.7; }
   .ask-setup strong { color: var(--text); }
   .ask-setup code { background: var(--surface2); padding: 2px 6px; border-radius: 4px; color: #f0c070; font-size: 0.82rem; }
@@ -168,18 +198,22 @@
     <div id="sermonList"></div>
   </div>
   <div id="askView">
-    <div id="askSetup" style="display:none" class="ask-setup">
+    <div id="askSetup" class="ask-setup" style="display:none">
       <strong>Ask tab not yet configured.</strong><br>
       To enable Q&amp;A, deploy the Apps Script backend and paste its URL into
       <code>APPS_SCRIPT_URL</code> in <code>build.py</code>, then rebuild.
     </div>
-    <div id="askInterface" style="display:none">
-      <div class="ask-form">
-        <textarea id="askInput" rows="2" placeholder="Ask a question about any sermon… e.g. What did Mark say about perseverance?"></textarea>
-        <button id="askBtn" onclick="submitQuestion()">Ask</button>
+    <div id="askInterface" style="display:none; flex-direction:column; height:100%;">
+      <div class="chat-toolbar">
+        <button class="btn-new-chat" onclick="newChat()">New conversation</button>
       </div>
-      <div class="ask-status" id="askStatus"></div>
-      <div id="answerArea"></div>
+      <div class="chat-messages" id="chatMessages"></div>
+      <div class="chat-input-wrap">
+        <textarea id="askInput" rows="1" placeholder="Ask a question about any sermon…"></textarea>
+        <button id="askBtn" onclick="submitQuestion()" title="Send">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22,2 15,22 11,13 2,9"/></svg>
+        </button>
+      </div>
     </div>
   </div>
 </div>
@@ -237,25 +271,28 @@ function highlight(text, query) {
   return esc(text).replace(re, '<span class="highlight">$1</span>');
 }
 
-// ── Tab switching ─────────────��─────────────────────────────��──────────────────
+// ── Tab switching ──────────────────────────────────────────────────────────────
 function switchTab(tab) {
   currentTab = tab;
   document.getElementById('searchView').style.display = tab === 'search' ? 'block' : 'none';
-  document.getElementById('askView').style.display    = tab === 'ask'    ? 'block' : 'none';
   document.getElementById('searchWrap').style.display = tab === 'search' ? 'block' : 'none';
   document.getElementById('searchHint').style.display = tab === 'search' ? 'block' : 'none';
   document.getElementById('tabSearch').classList.toggle('active', tab === 'search');
   document.getElementById('tabAsk').classList.toggle('active', tab === 'ask');
 
+  const askView = document.getElementById('askView');
   if (tab === 'ask') {
+    askView.classList.add('active');
     if (APPS_SCRIPT_URL) {
-      document.getElementById('askInterface').style.display = 'block';
+      document.getElementById('askInterface').style.display = 'flex';
       document.getElementById('askSetup').style.display = 'none';
     } else {
       document.getElementById('askInterface').style.display = 'none';
       document.getElementById('askSetup').style.display = 'block';
     }
     if (!semanticReady && !semanticLoading) loadSemanticModel();
+  } else {
+    askView.classList.remove('active');
   }
 }
 
@@ -371,7 +408,9 @@ function cardHtml(sermon, chunk, q) {
   </div>`;
 }
 
-// ── Ask tab ─────────────────────────────────────────────────────��──────────────
+// ── Ask tab — conversational chat ──────────────────────────────────────────��──
+let conversationHistory = []; // {role, content, sources?}
+
 async function getTopChunks(question) {
   if (!embedFn) return [];
   const queryVec = await embedFn(question);
@@ -381,84 +420,91 @@ async function getTopChunks(question) {
       if (!chunk.emb) continue;
       allChunks.push({
         sim: cosineSim(queryVec, chunk.emb),
-        payload: {
-          text: chunk.text,
-          sermon_title: sermon.title,
-          date: sermon.date,
-          speaker: sermon.speaker,
-          audio_url: sermon.audioUrl,
-        }
+        payload: { text: chunk.text, sermon_title: sermon.title, date: sermon.date, speaker: sermon.speaker, audio_url: sermon.audioUrl }
       });
     }
   }
-  return allChunks
-    .sort((a, b) => b.sim - a.sim)
-    .slice(0, ASK_TOP_CHUNKS)
-    .map(x => x.payload);
+  return allChunks.sort((a, b) => b.sim - a.sim).slice(0, ASK_TOP_CHUNKS).map(x => x.payload);
+}
+
+function newChat() {
+  conversationHistory = [];
+  document.getElementById('chatMessages').innerHTML = '';
+}
+
+function appendMessage(role, content, sources) {
+  const el = document.createElement('div');
+  el.className = `msg ${role}`;
+  const sourcesHtml = (sources && sources.length)
+    ? `<div class="msg-sources">${sources.map(s =>
+        `<a class="source-chip" href="${esc(s.audio_url)}" target="_blank" rel="noopener">
+          ${audioIcon} ${esc(s.title)} <span style="opacity:0.6">${esc(s.date)}</span>
+        </a>`).join('')}</div>`
+    : '';
+  el.innerHTML = `<div class="msg-bubble">${esc(content)}</div>${sourcesHtml}`;
+  document.getElementById('chatMessages').appendChild(el);
+  el.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  return el;
+}
+
+function appendTyping() {
+  const el = document.createElement('div');
+  el.className = 'msg assistant msg-typing';
+  el.innerHTML = '<div class="msg-bubble">Thinking…</div>';
+  document.getElementById('chatMessages').appendChild(el);
+  el.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  return el;
 }
 
 async function submitQuestion() {
-  const question = document.getElementById('askInput').value.trim();
+  const input = document.getElementById('askInput');
+  const question = input.value.trim();
   if (!question) return;
 
-  const btn = document.getElementById('askBtn');
-  const status = document.getElementById('askStatus');
-  const answerArea = document.getElementById('answerArea');
+  input.value = '';
+  input.style.height = 'auto';
+  document.getElementById('askBtn').disabled = true;
 
-  btn.disabled = true;
-  answerArea.innerHTML = '';
+  appendMessage('user', question);
+  conversationHistory.push({ role: 'user', content: question });
+
+  const typingEl = appendTyping();
 
   try {
-    if (!semanticReady) {
-      status.textContent = '⏳ Loading semantic model first…';
-      await loadSemanticModel();
-    }
-
-    status.textContent = '🔍 Finding relevant sermon passages…';
+    if (!semanticReady) await loadSemanticModel();
     const chunks = await getTopChunks(question);
 
-    if (chunks.length === 0) {
-      status.textContent = '';
-      answerArea.innerHTML = `<div class="answer-card"><div class="answer-text">No sermon content found to answer that question.</div></div>`;
-      return;
-    }
+    // Build messages array for Claude (role/content only, no sources)
+    const claudeMessages = conversationHistory.map(m => ({ role: m.role, content: m.content }));
 
-    status.textContent = '💬 Asking Claude…';
     const res = await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ question, chunks }),
+      body: JSON.stringify({ messages: claudeMessages, chunks }),
     });
 
     if (!res.ok) throw new Error(`Request failed: ${res.status}`);
     const data = await res.json();
     if (data.error) throw new Error(data.error);
 
-    status.textContent = '';
-
-    const sourcesHtml = data.sources && data.sources.length
-      ? `<div class="answer-sources">
-          <div class="answer-sources-label">Sources</div>
-          ${data.sources.map(s =>
-            `<a class="source-chip" href="${esc(s.audio_url)}" target="_blank" rel="noopener">
-              ${audioIcon} ${esc(s.title)} <span style="opacity:0.6">${esc(s.date)}</span>
-            </a>`
-          ).join('')}
-        </div>`
-      : '';
-
-    answerArea.innerHTML = `<div class="answer-card">
-      <div class="answer-text">${esc(data.answer)}</div>
-      ${sourcesHtml}
-    </div>`;
+    typingEl.remove();
+    appendMessage('assistant', data.answer, data.sources);
+    conversationHistory.push({ role: 'assistant', content: data.answer });
 
   } catch (err) {
-    status.textContent = '';
-    answerArea.innerHTML = `<div class="answer-card"><div class="answer-text" style="color:var(--subtext)">Error: ${esc(err.message)}</div></div>`;
+    typingEl.remove();
+    appendMessage('assistant', `Sorry, something went wrong: ${err.message}`);
   } finally {
-    btn.disabled = false;
+    document.getElementById('askBtn').disabled = false;
+    input.focus();
   }
 }
+
+// Auto-grow textarea
+document.getElementById('askInput').addEventListener('input', function() {
+  this.style.height = 'auto';
+  this.style.height = Math.min(this.scrollHeight, 140) + 'px';
+});
 
 document.getElementById('askInput').addEventListener('keydown', e => {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitQuestion(); }
