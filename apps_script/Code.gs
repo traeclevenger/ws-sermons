@@ -5,7 +5,7 @@
 //   Apps Script → Project Settings → Script Properties
 //   Add property: ANTHROPIC_API_KEY = sk-ant-...
 
-const CLAUDE_MODEL = "claude-sonnet-4-6";
+const CLAUDE_MODEL = "claude-haiku-4-5-20251001";
 const MAX_CONTEXT_CHUNKS = 8;
 
 function doPost(e) {
