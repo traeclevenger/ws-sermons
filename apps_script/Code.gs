@@ -12,25 +12,33 @@ const MAX_HISTORY_MESSAGES = 20; // keep last 10 turns
 function doPost(e) {
   try {
     const body = JSON.parse(e.postData.contents);
-    const messages = (body.messages || []).slice(-MAX_HISTORY_MESSAGES);
-    const chunks   = (body.chunks   || []).slice(0, MAX_CONTEXT_CHUNKS);
+    const messages     = (body.messages     || []).slice(-MAX_HISTORY_MESSAGES);
+    const chunks       = (body.chunks       || []).slice(0, MAX_CONTEXT_CHUNKS);
+    const sermonIndex  = (body.sermonIndex  || []);
 
     if (!messages.length) return respond({ error: "No messages provided." });
 
-    // Build sermon context for the system prompt
+    // Full sermon catalogue (for listing/browsing questions)
+    const catalogueText = sermonIndex.length
+      ? sermonIndex.map(s => `• ${s.date} — "${s.title}" (${s.speaker})`).join("\n")
+      : "(No sermons in catalogue yet.)";
+
+    // Relevant content chunks (for detailed content questions)
     const contextText = chunks.length
       ? chunks.map((c, i) =>
           `[${i + 1}] ${c.sermon_title} (${c.date} — ${c.speaker})\n${c.text}`
         ).join("\n\n---\n\n")
-      : "(No matching sermon excerpts found for this question.)";
+      : "(No closely matching excerpts found.)";
 
     const systemPrompt =
       "You are a helpful assistant for Westside church of Christ. " +
-      "Answer questions based on the sermon excerpts below. " +
-      "Be conversational, warm, and concise. Maintain context across the conversation. " +
-      "If the answer isn't clearly supported by the excerpts, say so honestly rather than speculating. " +
-      "When citing a specific sermon, mention its title naturally.\n\n" +
-      "Relevant sermon excerpts for the latest question:\n\n" + contextText;
+      "You help members explore and understand the church's sermon library. " +
+      "Be conversational, warm, and concise. Maintain context across the conversation.\n\n" +
+      "## Available sermons\n" + catalogueText + "\n\n" +
+      "## Relevant excerpts for the latest question\n" + contextText + "\n\n" +
+      "Use the sermon list to answer browsing questions (what's available, filter by topic/date/speaker). " +
+      "Use the excerpts to answer detailed content questions. " +
+      "If the excerpts don't support a claim, say so honestly rather than speculating.";
 
     const apiKey = PropertiesService.getScriptProperties().getProperty("ANTHROPIC_API_KEY");
     if (!apiKey) throw new Error("ANTHROPIC_API_KEY not set in Script Properties.");
