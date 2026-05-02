@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Westside Sermon Search</title>
+<link rel="icon" type="image/png" href="WS favicon.png">
+<style>
+  :root {
+    --bg: #0d1210;
+    --surface: #141c18;
+    --surface2: #1d2820;
+    --accent: #96aa9e;
+    --accent2: #6a7e72;
+    --text: #eaedea;
+    --subtext: #7a9082;
+    --border: #2a3830;
+    --card-shadow: 0 4px 24px rgba(0,0,0,0.5);
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+
+  header {
+    background: #ffffff;
+    border-bottom: 1px solid #d8d8d8;
+    padding: 16px 24px 14px;
+    position: sticky; top: 0; z-index: 100;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+  }
+  .site-logo { display: block; height: 64px; width: auto; margin-bottom: 14px; }
+  .search-wrap { position: relative; }
+  .search-wrap svg { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #999; pointer-events: none; }
+  #searchInput {
+    width: 100%; padding: 11px 36px 11px 42px;
+    background: #f3f3f3; border: 1px solid #d0d0d0;
+    border-radius: 10px; color: #1a1a1a;
+    font-size: 0.95rem; outline: none; transition: border-color 0.2s;
+    -webkit-appearance: none;
+  }
+  #searchInput:focus { border-color: #829086; background: #fff; }
+  #searchInput::placeholder { color: #999; }
+  #searchInput::-webkit-search-cancel-button { -webkit-appearance: none; display: none; }
+  #clearBtn {
+    display: none; position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+    width: 20px; height: 20px; border-radius: 50%; border: none; cursor: pointer;
+    background: #bbb; color: #fff; font-size: 13px; line-height: 1;
+    align-items: center; justify-content: center; padding: 0;
+    transition: background 0.15s;
+  }
+  #clearBtn.visible { display: flex; }
+  #clearBtn:hover { background: #999; }
+
+  .main { padding: 16px; max-width: 860px; margin: 0 auto; }
+  .results-count { font-size: 0.8rem; color: var(--subtext); margin-bottom: 14px; padding-left: 2px; min-height: 1.2em; }
+
+  .sermon-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 18px 20px;
+    margin-bottom: 12px;
+    box-shadow: var(--card-shadow);
+    transition: border-color 0.15s;
+  }
+  .sermon-card:hover { border-color: var(--accent2); }
+  .sermon-meta { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+  .sermon-title { font-size: 1rem; font-weight: 700; color: var(--text); }
+  .sermon-date { font-size: 0.78rem; color: var(--subtext); }
+  .sermon-speaker { font-size: 0.78rem; color: var(--accent2); }
+  .sermon-excerpt {
+    font-size: 0.85rem; color: var(--subtext); line-height: 1.6;
+    border-left: 3px solid var(--border); padding-left: 12px; margin: 10px 0;
+    display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .sermon-excerpt.expanded { -webkit-line-clamp: unset; }
+  .sermon-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 14px; border-radius: 8px; font-size: 0.8rem; font-weight: 600;
+    text-decoration: none; border: none; cursor: pointer; transition: all 0.15s;
+  }
+  .btn-audio {
+    background: rgba(150,170,158,0.15); color: var(--accent);
+    border: 1px solid rgba(150,170,158,0.3);
+  }
+  .btn-audio:hover { background: rgba(150,170,158,0.25); }
+  .btn-doc {
+    background: rgba(150,170,158,0.08); color: var(--subtext);
+    border: 1px solid var(--border);
+  }
+  .btn-doc:hover { color: var(--accent); border-color: var(--accent2); }
+  .btn-expand {
+    background: transparent; color: var(--subtext);
+    border: none; padding: 0; font-size: 0.75rem; cursor: pointer;
+    text-decoration: underline; text-decoration-color: var(--border);
+  }
+  .btn-expand:hover { color: var(--accent); }
+
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--subtext); }
+  .empty-state p { margin-top: 8px; font-size: 0.85rem; }
+
+  #searchHint { font-size: 0.75rem; color: var(--subtext); margin-top: 6px; padding-left: 2px; min-height: 1em; }
+
+  .highlight { background: rgba(150,170,158,0.25); border-radius: 3px; padding: 0 2px; color: var(--accent); }
+
+  @media (max-width: 600px) {
+    header { padding: 12px 16px 10px; }
+    .site-logo { height: 48px; }
+    .main { padding: 12px; }
+    .sermon-card { padding: 14px 16px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <img src="WS logo.png" alt="Westside church of Christ" class="site-logo">
+  <div class="search-wrap">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    <input type="search" id="searchInput" placeholder="Search sermons by topic, scripture, keyword…" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+    <button id="clearBtn" aria-label="Clear search" onclick="clearSearch()">✕</button>
+  </div>
+  <div id="searchHint"></div>
+</header>
+
+<div class="main">
+  <div class="results-count" id="resultsCount"></div>
+  <div id="sermonList"></div>
+</div>
+
+<script>
+const SERMONS = [
+  
+];
+
+const TRANSFORMERS_CDN = 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
+const EMBED_MODEL = 'Xenova/all-MiniLM-L6-v2';
+const SEMANTIC_THRESHOLD = 0.30;
+
+let semanticReady = false, semanticLoading = false, embedFn = null;
+let _searchTimer = null;
+
+function cosineSim(a, b) {
+  let dot = 0;
+  for (let i = 0; i < a.length; i++) dot += a[i] * b[i];
+  return dot;
+}
+
+async function loadSemanticModel() {
+  if (semanticReady || semanticLoading) return;
+  semanticLoading = true;
+  setHint('Loading semantic model… (first time only, ~22 MB)');
+  try {
+    const { pipeline } = await import(`${TRANSFORMERS_CDN}/dist/transformers.min.js`);
+    const pipe = await pipeline('feature-extraction', EMBED_MODEL, { quantized: true });
+    embedFn = async (text) => {
+      const out = await pipe(text, { pooling: 'mean', normalize: true });
+      return new Float32Array(out.data);
+    };
+    semanticReady = true;
+    setHint('');
+    doSearch();
+  } catch(e) {
+    setHint('Semantic model unavailable — using keyword search');
+    semanticLoading = false;
+  }
+}
+
+function setHint(msg) { document.getElementById('searchHint').textContent = msg; }
+
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function highlight(text, query) {
+  if (!query || !text) return esc(text || '');
+  const re = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi');
+  return esc(text).replace(re, '<span class="highlight">$1</span>');
+}
+
+document.getElementById('searchInput').addEventListener('input', e => {
+  const q = e.target.value.trim();
+  document.getElementById('clearBtn').classList.toggle('visible', q.length > 0);
+  if (q && !semanticReady && !semanticLoading) loadSemanticModel();
+  clearTimeout(_searchTimer);
+  _searchTimer = setTimeout(doSearch, 120);
+});
+
+function clearSearch() {
+  document.getElementById('searchInput').value = '';
+  document.getElementById('clearBtn').classList.remove('visible');
+  setHint('');
+  doSearch();
+}
+
+function doSearch() {
+  const q = document.getElementById('searchInput').value.trim();
+  if (!q) { renderAll(); return; }
+
+  if (semanticReady && embedFn) {
+    embedFn(q).then(queryVec => {
+      // Score each sermon by its best-matching chunk
+      const scored = SERMONS.map(sermon => {
+        let bestSim = 0, bestChunk = null;
+        for (const chunk of sermon.chunks) {
+          if (!chunk.emb) continue;
+          const sim = cosineSim(queryVec, chunk.emb);
+          if (sim > bestSim) { bestSim = sim; bestChunk = chunk; }
+        }
+        return { sermon, sim: bestSim, chunk: bestChunk };
+      })
+      .filter(x => x.sim >= SEMANTIC_THRESHOLD)
+      .sort((a, b) => b.sim - a.sim);
+
+      if (scored.length > 0) {
+        renderResults(scored, q);
+      } else {
+        renderKeyword(q);
+      }
+    });
+  } else {
+    if (semanticLoading) setHint('⏳ Loading semantic model… results will refine shortly.');
+    renderKeyword(q);
+  }
+}
+
+function renderKeyword(q) {
+  const ql = q.toLowerCase();
+  const scored = SERMONS.map(sermon => {
+    const haystack = [sermon.title, sermon.speaker, sermon.date,
+      ...sermon.chunks.map(c => c.text)].join(' ').toLowerCase();
+    if (!haystack.includes(ql)) return null;
+    const chunk = sermon.chunks.find(c => c.text.toLowerCase().includes(ql)) || sermon.chunks[0];
+    return { sermon, sim: 1, chunk };
+  }).filter(Boolean);
+  renderResults(scored, q);
+}
+
+function renderAll() {
+  const list = document.getElementById('sermonList');
+  updateCount(SERMONS.length, SERMONS.length);
+  if (SERMONS.length === 0) {
+    list.innerHTML = `<div class="empty-state"><strong>No sermons yet.</strong><p>Transcripts will appear here once processed.</p></div>`;
+    return;
+  }
+  list.innerHTML = [...SERMONS]
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .map(s => cardHtml(s, s.chunks[0], ''))
+    .join('');
+}
+
+function renderResults(scored, q) {
+  const list = document.getElementById('sermonList');
+  updateCount(scored.length, SERMONS.length);
+  if (scored.length === 0) {
+    list.innerHTML = `<div class="empty-state"><strong>No results found.</strong><p>Try different keywords or a broader phrase.</p></div>`;
+    return;
+  }
+  list.innerHTML = scored.map(({ sermon, chunk }) => cardHtml(sermon, chunk, q)).join('');
+}
+
+function updateCount(n, total) {
+  document.getElementById('resultsCount').textContent =
+    n === total
+      ? `${total} sermon${total !== 1 ? 's' : ''}`
+      : `${n} of ${total} sermons match`;
+}
+
+const playIcon = `<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>`;
+const docIcon  = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>`;
+
+let expandedCards = new Set();
+
+function toggleExpand(id) {
+  const el = document.getElementById('excerpt-' + id);
+  if (expandedCards.has(id)) {
+    expandedCards.delete(id);
+    el.classList.remove('expanded');
+    document.getElementById('expand-' + id).textContent = 'Show more';
+  } else {
+    expandedCards.add(id);
+    el.classList.add('expanded');
+    document.getElementById('expand-' + id).textContent = 'Show less';
+  }
+}
+
+function cardHtml(sermon, chunk, q) {
+  const id = esc(sermon.date + sermon.title).replace(/\W/g, '');
+  const excerptText = chunk ? chunk.text : '';
+  const docBtn = sermon.docUrl
+    ? `<a class="btn btn-doc" href="${esc(sermon.docUrl)}" target="_blank" rel="noopener">${docIcon} Full transcript</a>`
+    : '';
+  return `<div class="sermon-card">
+    <div class="sermon-meta">
+      <span class="sermon-title">${highlight(sermon.title, q)}</span>
+      <span class="sermon-speaker">${highlight(sermon.speaker, q)}</span>
+      <span class="sermon-date">${esc(sermon.date)}</span>
+    </div>
+    ${excerptText ? `<div class="sermon-excerpt" id="excerpt-${id}">${highlight(excerptText, q)}</div>
+    <button class="btn-expand" id="expand-${id}" onclick="toggleExpand('${id}')">Show more</button>` : ''}
+    <div class="sermon-actions">
+      <a class="btn btn-audio" href="${esc(sermon.audioUrl)}" target="_blank" rel="noopener">${playIcon} Listen</a>
+      ${docBtn}
+    </div>
+  </div>`;
+}
+
+renderAll();
+</script>
+</body>
+</html>
