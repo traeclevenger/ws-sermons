@@ -20,15 +20,15 @@
     background: #fff; border-bottom: 1px solid #d8d8d8;
     padding: 14px 20px 12px; flex-shrink: 0;
     box-shadow: 0 2px 12px rgba(0,0,0,0.12);
-    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    display: flex; align-items: center; justify-content: center;
   }
-  .site-logo { height: 56px; width: auto; display: block; }
-  .btn-new-chat {
-    background: transparent; border: 1px solid #d0d0d0; color: #666;
-    border-radius: 8px; padding: 6px 14px; font-size: 0.78rem; cursor: pointer;
-    white-space: nowrap; transition: all 0.15s; flex-shrink: 0;
+  .site-logo { height: 80px; width: auto; display: block; }
+
+  .page-title {
+    text-align: center; padding: 16px 0 4px;
+    font-size: 1.25rem; font-weight: 700; color: var(--accent);
+    letter-spacing: 0.03em; flex-shrink: 0;
   }
-  .btn-new-chat:hover { border-color: #829086; color: #333; }
 
   .chat-wrap {
     flex: 1; overflow: hidden; display: flex; flex-direction: column;
@@ -65,7 +65,7 @@
   .chat-hint { font-size: 0.72rem; color: var(--subtext); text-align: center; padding: 4px 0 2px; min-height: 1.2em; }
 
   .chat-input-wrap {
-    display: flex; gap: 8px; padding: 10px 0 16px;
+    display: flex; gap: 8px; padding: 10px 0 32px;
     border-top: 1px solid var(--border);
   }
   #askInput {
@@ -76,17 +76,20 @@
   }
   #askInput:focus { border-color: var(--accent2); }
   #askInput::placeholder { color: var(--subtext); }
-  #askBtn {
+  #askBtn, #newChatBtn {
     width: 44px; height: 44px; flex-shrink: 0; align-self: flex-end;
-    background: var(--accent2); color: #fff; border: none; border-radius: 12px;
-    cursor: pointer; transition: background 0.15s; display: flex; align-items: center; justify-content: center;
+    border: none; border-radius: 12px; cursor: pointer;
+    transition: background 0.15s; display: flex; align-items: center; justify-content: center;
   }
+  #askBtn { background: var(--accent2); color: #fff; }
   #askBtn:hover:not(:disabled) { background: var(--accent); }
   #askBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+  #newChatBtn { background: var(--surface2); color: var(--subtext); font-size: 1.4rem; line-height: 1; }
+  #newChatBtn:hover { background: var(--border); color: var(--text); }
 
   @media (max-width: 600px) {
     header { padding: 10px 14px; }
-    .site-logo { height: 44px; }
+    .site-logo { height: 60px; }
     .chat-wrap { padding: 0 12px; }
   }
 </style>
@@ -95,14 +98,16 @@
 
 <header>
   <img src="WS logo.png" alt="Westside church of Christ" class="site-logo">
-  <button class="btn-new-chat" onclick="newChat()">New conversation</button>
 </header>
+
+<div class="page-title">Sermon Search</div>
 
 <div class="chat-wrap">
   <div class="chat-messages" id="chatMessages"></div>
   <div class="chat-hint" id="chatHint"></div>
   <div class="chat-input-wrap">
     <textarea id="askInput" rows="1" placeholder="Ask about any sermon, or ask what's available…"></textarea>
+    <button id="newChatBtn" onclick="newChat()" title="New Conversation">+</button>
     <button id="askBtn" onclick="submitQuestion()" title="Send">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22,2 15,22 11,13 2,9"/></svg>
     </button>
@@ -259,6 +264,8 @@ document.getElementById('askInput').addEventListener('input', function() {
 document.getElementById('askInput').addEventListener('keydown', e => {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitQuestion(); }
 });
+
+document.getElementById('askInput').focus();
 </script>
 </body>
 </html>
