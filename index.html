@@ -20,14 +20,14 @@
     background: #fff; border-bottom: 1px solid #d8d8d8;
     padding: 14px 20px 12px; flex-shrink: 0;
     box-shadow: 0 2px 12px rgba(0,0,0,0.12);
-    display: flex; align-items: center; justify-content: center;
+    display: flex; align-items: center; justify-content: flex-start;
   }
   .site-logo { height: 80px; width: auto; display: block; }
 
   .page-title {
     text-align: center; padding: 16px 0 4px;
-    font-size: 1.25rem; font-weight: 700; color: var(--accent);
-    letter-spacing: 0.03em; flex-shrink: 0;
+    font-size: 1.7rem; font-weight: 700; color: var(--accent);
+    font-family: Georgia, serif; letter-spacing: 0.03em; flex-shrink: 0;
   }
 
   .chat-wrap {
@@ -65,7 +65,7 @@
   .chat-hint { font-size: 0.72rem; color: var(--subtext); text-align: center; padding: 4px 0 2px; min-height: 1.2em; }
 
   .chat-input-wrap {
-    display: flex; gap: 8px; padding: 10px 0 32px;
+    display: flex; gap: 8px; padding: 10px 0 64px;
     border-top: 1px solid var(--border);
   }
   #askInput {
@@ -100,7 +100,7 @@
   <img src="WS logo.png" alt="Westside church of Christ" class="site-logo">
 </header>
 
-<div class="page-title">Sermon Search</div>
+<div class="page-title">Explore Past Sermons</div>
 
 <div class="chat-wrap">
   <div class="chat-messages" id="chatMessages"></div>
