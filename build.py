@@ -13,7 +13,7 @@ REPO_DIR = Path(__file__).parent
 SERMONS_JSON = REPO_DIR / "data" / "sermons.json"
 
 # Paste your deployed Apps Script web app URL here
-APPS_SCRIPT_URL = ""
+APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyopzDyAKaarp3KUxtU7JXEvEYdEs_QBLatKMsSHo-IBZ3v9PNaJjd5l5t9JYniOUHwbg/exec"
 
 with open(SERMONS_JSON) as f:
     sermons = json.load(f)
