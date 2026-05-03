@@ -62,6 +62,12 @@
   }
   .source-chip:hover { background: rgba(150,170,158,0.2); border-color: var(--accent2); }
 
+  .sermon-table { margin-top: 10px; border-collapse: collapse; font-size: 0.82rem; width: 100%; }
+  .sermon-table th { text-align: left; padding: 5px 10px; color: var(--subtext); border-bottom: 1px solid var(--border); font-weight: 600; }
+  .sermon-table td { padding: 5px 10px; border-bottom: 1px solid rgba(42,56,48,0.5); }
+  .sermon-table a { color: var(--accent); text-decoration: none; }
+  .sermon-table a:hover { text-decoration: underline; }
+
   .chat-hint { font-size: 0.72rem; color: var(--subtext); text-align: center; padding: 4px 0 2px; min-height: 1.2em; }
 
   .chat-input-wrap {
@@ -197,16 +203,24 @@ function newChat() {
   document.getElementById('askInput').focus();
 }
 
-function appendMessage(role, content, sources) {
+function appendMessage(role, content, cited, listSermons) {
   const el = document.createElement('div');
   el.className = `msg ${role}`;
-  const sourcesHtml = (sources && sources.length)
-    ? `<div class="msg-sources">${sources.map(s =>
-        `<a class="source-chip" href="${esc(s.audio_url)}" target="_blank" rel="noopener">
-          ${audioIcon} ${esc(s.title)} <span style="opacity:0.6">${esc(s.date)}</span>
-        </a>`).join('')}</div>`
-    : '';
-  el.innerHTML = `<div class="msg-bubble">${esc(content)}</div>${sourcesHtml}`;
+  let extra = '';
+  if (listSermons && listSermons.length) {
+    const rows = listSermons.map(s =>
+      `<tr><td>${esc(s.date)}</td><td>${s.audio_url
+        ? `<a href="${esc(s.audio_url)}" target="_blank" rel="noopener">${esc(s.title)}</a>`
+        : esc(s.title)}</td></tr>`
+    ).join('');
+    extra = `<table class="sermon-table"><thead><tr><th>Date</th><th>Title</th></tr></thead><tbody>${rows}</tbody></table>`;
+  } else if (cited && cited.length) {
+    extra = `<div class="msg-sources">${cited.map(s =>
+      `<a class="source-chip" href="${esc(s.audio_url)}" target="_blank" rel="noopener">
+        ${audioIcon} ${esc(s.title)} <span style="opacity:0.6">${esc(s.date)}</span>
+      </a>`).join('')}</div>`;
+  }
+  el.innerHTML = `<div class="msg-bubble">${esc(content)}</div>${extra}`;
   document.getElementById('chatMessages').appendChild(el);
   el.scrollIntoView({ behavior: 'smooth', block: 'end' });
   return el;
@@ -255,7 +269,7 @@ async function submitQuestion() {
     if (data.error) throw new Error(data.error);
 
     typingEl.remove();
-    appendMessage('assistant', data.answer, data.sources);
+    appendMessage('assistant', data.answer, data.cited_sermons, data.list_sermons);
     conversationHistory.push({ role: 'assistant', content: data.answer });
 
   } catch (err) {
