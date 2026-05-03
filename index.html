@@ -257,15 +257,21 @@ async function loadSemanticModel() {
 
 async function getTopChunks(question) {
   if (!embedFn) return [];
-  const queryVec = await embedFn(question);
-  const questionLower = question.toLowerCase();
 
-  // Sermons whose title has significant word overlap with the question
+  // For follow-up questions, augment the query with the last assistant reply
+  const lastAssistant = [...conversationHistory].reverse().find(m => m.role === 'assistant');
+  const augmentedQuery = lastAssistant
+    ? question + ' ' + lastAssistant.content.slice(0, 300)
+    : question;
+  const queryVec = await embedFn(augmentedQuery);
+
+  // Match sermon titles against the question AND recent assistant reply
+  const searchText = question.toLowerCase() + ' ' + (lastAssistant ? lastAssistant.content.toLowerCase() : '');
   const titleMatched = new Set(
     SERMONS
       .filter(s => s.title.toLowerCase().split(/\s+/)
         .filter(w => w.length > 3)
-        .some(w => questionLower.includes(w)))
+        .some(w => searchText.includes(w)))
       .map(s => s.title)
   );
 
