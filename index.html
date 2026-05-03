@@ -258,17 +258,42 @@ async function loadSemanticModel() {
 async function getTopChunks(question) {
   if (!embedFn) return [];
   const queryVec = await embedFn(question);
+  const questionLower = question.toLowerCase();
+
+  // Sermons whose title has significant word overlap with the question
+  const titleMatched = new Set(
+    SERMONS
+      .filter(s => s.title.toLowerCase().split(/\s+/)
+        .filter(w => w.length > 3)
+        .some(w => questionLower.includes(w)))
+      .map(s => s.title)
+  );
+
   const allChunks = [];
   for (const sermon of SERMONS) {
     for (const chunk of sermon.chunks) {
       if (!chunk.emb) continue;
       allChunks.push({
         sim: cosineSim(queryVec, chunk.emb),
+        titleMatch: titleMatched.has(sermon.title),
         payload: { text: chunk.text, sermon_title: sermon.title, date: sermon.date, speaker: sermon.speaker, audio_url: sermon.audioUrl }
       });
     }
   }
-  return allChunks.sort((a, b) => b.sim - a.sim).slice(0, ASK_TOP_CHUNKS).map(x => x.payload);
+
+  // Title-matched chunks fill slots first, then top semantic results for the rest
+  const titleChunks = allChunks
+    .filter(c => c.titleMatch)
+    .sort((a, b) => b.sim - a.sim)
+    .slice(0, ASK_TOP_CHUNKS);
+
+  const seen = new Set(titleChunks.map(c => c.payload.text));
+  const semanticChunks = allChunks
+    .filter(c => !c.titleMatch && !seen.has(c.payload.text))
+    .sort((a, b) => b.sim - a.sim)
+    .slice(0, ASK_TOP_CHUNKS - titleChunks.length);
+
+  return [...titleChunks, ...semanticChunks].map(c => c.payload);
 }
 
 function newChat() {
