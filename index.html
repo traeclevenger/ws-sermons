@@ -62,9 +62,10 @@
   }
   .source-chip:hover { background: rgba(150,170,158,0.2); border-color: var(--accent2); }
 
-  .sermon-table { margin-top: 10px; border-collapse: collapse; font-size: 0.82rem; width: 100%; }
-  .sermon-table th { text-align: left; padding: 5px 10px; color: var(--subtext); border-bottom: 1px solid var(--border); font-weight: 600; }
+  .sermon-table { margin-top: 10px; border-collapse: collapse; font-size: 0.82rem; width: 100%; table-layout: auto; }
+  .sermon-table th { text-align: left; padding: 5px 10px; color: var(--subtext); border-bottom: 1px solid var(--border); font-weight: 600; white-space: nowrap; }
   .sermon-table td { padding: 5px 10px; border-bottom: 1px solid rgba(42,56,48,0.5); }
+  .sermon-table td:first-child { white-space: nowrap; width: 1%; }
   .sermon-table a { color: var(--accent); text-decoration: none; }
   .sermon-table a:hover { text-decoration: underline; }
 
