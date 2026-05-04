@@ -409,6 +409,7 @@ async function submitQuestion() {
       setHint('');
     }
     const chunks = await getTopChunks(question);
+    console.log(`[chunks] sending ${chunks.length}${chunks[0] ? ' from: ' + chunks[0].sermon_title : ''}`);
     const claudeMessages = conversationHistory.map(m => ({ role: m.role, content: m.content }));
 
     const res = await fetch(APPS_SCRIPT_URL, {
