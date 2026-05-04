@@ -83,11 +83,11 @@ html = r"""<!DOCTYPE html>
 
   header {
     background: #fff; border-bottom: 1px solid #d8d8d8;
-    padding: 8px 20px; flex-shrink: 0;
+    padding: 16px 24px 14px; flex-shrink: 0;
     box-shadow: 0 2px 12px rgba(0,0,0,0.12);
     display: flex; align-items: center; justify-content: flex-start;
   }
-  .site-logo { height: 52px; width: auto; display: block; }
+  .site-logo { height: 64px; width: auto; display: block; }
 
   .chat-wrap {
     flex: 1; overflow: hidden; display: flex; flex-direction: column;
@@ -169,8 +169,8 @@ html = r"""<!DOCTYPE html>
   @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
 
   @media (max-width: 600px) {
-    header { padding: 6px 14px; }
-    .site-logo { height: 40px; }
+    header { padding: 10px 16px; }
+    .site-logo { height: 48px; }
     .chat-wrap { padding: 0 12px; }
     .page-title { font-size: 1.35rem; padding: 12px 0 4px; }
     .msg { max-width: 92%; }
