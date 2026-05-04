@@ -486,15 +486,18 @@ async function getTopChunks(question) {
     : question;
   const queryVec = await embedFn(augmentedQuery);
 
-  // Match sermon titles against the question AND recent assistant reply
+  // Score each sermon: fraction of its title words (>3 chars) found in search text + date bonus
   const searchText = question.toLowerCase() + ' ' + (lastAssistant ? lastAssistant.content.toLowerCase() : '');
-  const titleMatched = new Set(
-    SERMONS
-      .filter(s => s.title.toLowerCase().split(/\s+/)
-        .filter(w => w.length > 3)
-        .some(w => searchText.includes(w)))
-      .map(s => s.title)
-  );
+  const monthNames = ['january','february','march','april','may','june','july','august','september','october','november','december'];
+  const sermonScoreMap = new Map();
+  for (const s of SERMONS) {
+    const words = s.title.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+    const titleScore = words.length ? words.filter(w => searchText.includes(w)).length / words.length : 0;
+    const sermonMonth = monthNames[parseInt(s.date.slice(5,7)) - 1];
+    const dateBonus = searchText.includes(sermonMonth) ? 0.25 : 0;
+    const score = titleScore + dateBonus;
+    if (score > 0) sermonScoreMap.set(s.title, score);
+  }
 
   const allChunks = [];
   for (const sermon of SERMONS) {
@@ -502,21 +505,26 @@ async function getTopChunks(question) {
       if (!chunk.emb) continue;
       allChunks.push({
         sim: cosineSim(queryVec, chunk.emb),
-        titleMatch: titleMatched.has(sermon.title),
+        titleMatch: sermonScoreMap.has(sermon.title),
         payload: { text: chunk.text, sermon_title: sermon.title, date: sermon.date, speaker: sermon.speaker, audio_url: sermon.audioUrl }
       });
     }
   }
 
-  // If exactly one sermon is title-matched, send ALL its chunks (enables full outlines/summaries)
-  if (titleMatched.size === 1) {
-    return allChunks
-      .filter(c => c.titleMatch)
-      .sort((a, b) => b.sim - a.sim)
-      .map(c => c.payload);
+  // If one sermon is clearly the best match, send ALL its chunks for full outlines/summaries
+  if (sermonScoreMap.size > 0) {
+    const sorted = [...sermonScoreMap.entries()].sort((a, b) => b[1] - a[1]);
+    const [topTitle, topScore] = sorted[0];
+    const secondScore = sorted[1]?.[1] ?? 0;
+    if (topScore >= 0.5 && topScore - secondScore >= 0.15) {
+      return allChunks
+        .filter(c => c.payload.sermon_title === topTitle)
+        .sort((a, b) => b.sim - a.sim)
+        .map(c => c.payload);
+    }
   }
 
-  // Multiple title matches or no title match: fill slots with title-matched first, then semantic
+  // Fall back: title-matched chunks first, then semantic fill
   const titleChunks = allChunks
     .filter(c => c.titleMatch)
     .sort((a, b) => b.sim - a.sim)
