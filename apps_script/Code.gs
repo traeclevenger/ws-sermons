@@ -6,7 +6,7 @@
 //   Add property: ANTHROPIC_API_KEY = sk-ant-...
 
 const CLAUDE_MODEL = "claude-haiku-4-5-20251001";
-const MAX_CONTEXT_CHUNKS = 8;
+const MAX_CONTEXT_CHUNKS = 60;
 const MAX_HISTORY_MESSAGES = 20; // keep last 10 turns
 
 function doPost(e) {
@@ -45,7 +45,7 @@ function doPost(e) {
       "IMPORTANT: Respond only with a JSON object — no text outside the JSON:\n" +
       "{\"answer\":\"your plain-text response\",\"cited_sermons\":[\"exact sermon title\"],\"list_sermons\":[{\"date\":\"YYYY-MM-DD\",\"title\":\"exact sermon title\"}]}\n" +
       "- cited_sermons: exact titles of sermons you specifically reference or quote in your answer. Empty array if none.\n" +
-      "- list_sermons: populated ONLY when your answer is presenting a list or catalogue of sermons. Empty array otherwise.";
+      "- list_sermons: populated when your answer involves a group, series, or set of sermons — even if the user didn't explicitly ask for a list. For example, if the user asks about a sermon series, include all sermons in that series. Empty array otherwise.";
 
     const apiKey = PropertiesService.getScriptProperties().getProperty("ANTHROPIC_API_KEY");
     if (!apiKey) throw new Error("ANTHROPIC_API_KEY not set in Script Properties.");
@@ -59,7 +59,7 @@ function doPost(e) {
       },
       payload: JSON.stringify({
         model: CLAUDE_MODEL,
-        max_tokens: 1024,
+        max_tokens: 2048,
         system: systemPrompt,
         messages: messages,
       }),

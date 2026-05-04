@@ -303,7 +303,15 @@ async function getTopChunks(question) {
     }
   }
 
-  // Title-matched chunks fill slots first, then top semantic results for the rest
+  // If exactly one sermon is title-matched, send ALL its chunks (enables full outlines/summaries)
+  if (titleMatched.size === 1) {
+    return allChunks
+      .filter(c => c.titleMatch)
+      .sort((a, b) => b.sim - a.sim)
+      .map(c => c.payload);
+  }
+
+  // Multiple title matches or no title match: fill slots with title-matched first, then semantic
   const titleChunks = allChunks
     .filter(c => c.titleMatch)
     .sort((a, b) => b.sim - a.sim)
