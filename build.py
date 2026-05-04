@@ -75,25 +75,19 @@ html = r"""<!DOCTYPE html>
     --bg: #0d1210; --surface: #141c18; --surface2: #1d2820;
     --accent: #96aa9e; --accent2: #6a7e72;
     --text: #eaedea; --subtext: #7a9082; --border: #2a3830;
-    --radius: 14px; --header-h: 96px;
+    --radius: 14px; --header-h: 68px;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { height: 100%; }
+  html, body { height: 100%; height: 100dvh; }
   body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; display: flex; flex-direction: column; }
 
   header {
     background: #fff; border-bottom: 1px solid #d8d8d8;
-    padding: 14px 20px 12px; flex-shrink: 0;
+    padding: 8px 20px; flex-shrink: 0;
     box-shadow: 0 2px 12px rgba(0,0,0,0.12);
-    display: flex; align-items: center; justify-content: center;
+    display: flex; align-items: center; justify-content: flex-start;
   }
-  .site-logo { height: 80px; width: auto; display: block; }
-
-  .page-title {
-    text-align: center; padding: 16px 0 4px;
-    font-size: 1.25rem; font-weight: 700; color: var(--accent);
-    letter-spacing: 0.03em; flex-shrink: 0;
-  }
+  .site-logo { height: 52px; width: auto; display: block; }
 
   .chat-wrap {
     flex: 1; overflow: hidden; display: flex; flex-direction: column;
@@ -127,10 +121,18 @@ html = r"""<!DOCTYPE html>
   }
   .source-chip:hover { background: rgba(150,170,158,0.2); border-color: var(--accent2); }
 
+  .sermon-table { margin-top: 10px; border-collapse: collapse; font-size: 0.82rem; width: 100%; table-layout: auto; }
+  .sermon-table th { text-align: left; padding: 5px 10px; color: var(--subtext); border-bottom: 1px solid var(--border); font-weight: 600; white-space: nowrap; }
+  .sermon-table td { padding: 5px 10px; border-bottom: 1px solid rgba(42,56,48,0.5); }
+  .sermon-table td:first-child { white-space: nowrap; word-break: normal; width: 1%; }
+  .sermon-table a { color: var(--accent); text-decoration: none; }
+  .sermon-table a:hover { text-decoration: underline; }
+
   .chat-hint { font-size: 0.72rem; color: var(--subtext); text-align: center; padding: 4px 0 2px; min-height: 1.2em; }
 
   .chat-input-wrap {
-    display: flex; gap: 8px; padding: 10px 0 32px;
+    display: flex; gap: 8px; padding: 10px 0 64px;
+    padding-bottom: max(64px, calc(32px + env(safe-area-inset-bottom)));
     border-top: 1px solid var(--border);
   }
   #askInput {
@@ -141,7 +143,7 @@ html = r"""<!DOCTYPE html>
   }
   #askInput:focus { border-color: var(--accent2); }
   #askInput::placeholder { color: var(--subtext); }
-  #askBtn, #newChatBtn {
+  #askBtn, #newChatBtn, #micBtn {
     width: 44px; height: 44px; flex-shrink: 0; align-self: flex-end;
     border: none; border-radius: 12px; cursor: pointer;
     transition: background 0.15s; display: flex; align-items: center; justify-content: center;
@@ -151,11 +153,19 @@ html = r"""<!DOCTYPE html>
   #askBtn:disabled { opacity: 0.4; cursor: not-allowed; }
   #newChatBtn { background: var(--surface2); color: var(--subtext); font-size: 1.4rem; line-height: 1; }
   #newChatBtn:hover { background: var(--border); color: var(--text); }
+  #micBtn { background: var(--surface2); color: var(--subtext); display: none; }
+  #micBtn:hover { background: var(--border); color: var(--text); }
+  #micBtn.listening { background: #c0392b; color: #fff; animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
 
   @media (max-width: 600px) {
-    header { padding: 10px 14px; }
-    .site-logo { height: 60px; }
+    header { padding: 6px 14px; }
+    .site-logo { height: 40px; }
     .chat-wrap { padding: 0 12px; }
+    .page-title { font-size: 1.35rem; padding: 12px 0 4px; }
+    .msg { max-width: 92%; }
+    .msg-bubble { font-size: 0.88rem; }
+    #askInput { font-size: 1rem; }
   }
 </style>
 </head>
@@ -165,13 +175,14 @@ html = r"""<!DOCTYPE html>
   <img src="WS logo.png" alt="Westside church of Christ" class="site-logo">
 </header>
 
-<div class="page-title">Sermon Search</div>
-
 <div class="chat-wrap">
   <div class="chat-messages" id="chatMessages"></div>
   <div class="chat-hint" id="chatHint"></div>
   <div class="chat-input-wrap">
-    <textarea id="askInput" rows="1" placeholder="Ask about any sermon, or ask what's available…"></textarea>
+    <textarea id="askInput" rows="1" placeholder="Ask about any sermon, or ask what's available…" data-placeholder-desktop="Ask about any sermon, or ask what's available…" data-placeholder-mobile="Ask about a sermon…"></textarea>
+    <button id="micBtn" title="Speak your question">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.91-3c-.49 0-.9.36-.98.85C16.52 14.2 14.47 16 12 16s-4.52-1.8-4.93-4.15c-.08-.49-.49-.85-.98-.85-.61 0-1.09.54-1 1.14.49 3 2.89 5.35 5.91 5.78V19c0 .55.45 1 1 1s1-.45 1-1v-1.08c3.02-.43 5.42-2.78 5.91-5.78.1-.6-.39-1.14-1-1.14z"/></svg>
+    </button>
     <button id="newChatBtn" onclick="newChat()" title="New Conversation">+</button>
     <button id="askBtn" onclick="submitQuestion()" title="Send">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22,2 15,22 11,13 2,9"/></svg>
@@ -196,6 +207,24 @@ const audioIcon = `<svg width="11" height="11" viewBox="0 0 24 24" fill="current
 
 function esc(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function renderMarkdown(text) {
+  const lines = esc(text).split('\n');
+  const out = [];
+  let inList = false;
+  for (const line of lines) {
+    const bullet = line.match(/^(\s*[-*]|\s*\d+\.)\s+(.*)/);
+    if (bullet) {
+      if (!inList) { out.push('<ul>'); inList = true; }
+      out.push(`<li>${bullet[2]}</li>`);
+    } else {
+      if (inList) { out.push('</ul>'); inList = false; }
+      out.push(line === '' ? '<br>' : `<span>${line}</span><br>`);
+    }
+  }
+  if (inList) out.push('</ul>');
+  return out.join('');
 }
 
 function setHint(msg) { document.getElementById('chatHint').textContent = msg; }
@@ -225,18 +254,49 @@ async function loadSemanticModel() {
 
 async function getTopChunks(question) {
   if (!embedFn) return [];
-  const queryVec = await embedFn(question);
+
+  // For follow-up questions, augment the query with the last assistant reply
+  const lastAssistant = [...conversationHistory].reverse().find(m => m.role === 'assistant');
+  const augmentedQuery = lastAssistant
+    ? question + ' ' + lastAssistant.content.slice(0, 300)
+    : question;
+  const queryVec = await embedFn(augmentedQuery);
+
+  // Match sermon titles against the question AND recent assistant reply
+  const searchText = question.toLowerCase() + ' ' + (lastAssistant ? lastAssistant.content.toLowerCase() : '');
+  const titleMatched = new Set(
+    SERMONS
+      .filter(s => s.title.toLowerCase().split(/\s+/)
+        .filter(w => w.length > 3)
+        .some(w => searchText.includes(w)))
+      .map(s => s.title)
+  );
+
   const allChunks = [];
   for (const sermon of SERMONS) {
     for (const chunk of sermon.chunks) {
       if (!chunk.emb) continue;
       allChunks.push({
         sim: cosineSim(queryVec, chunk.emb),
+        titleMatch: titleMatched.has(sermon.title),
         payload: { text: chunk.text, sermon_title: sermon.title, date: sermon.date, speaker: sermon.speaker, audio_url: sermon.audioUrl }
       });
     }
   }
-  return allChunks.sort((a, b) => b.sim - a.sim).slice(0, ASK_TOP_CHUNKS).map(x => x.payload);
+
+  // Title-matched chunks fill slots first, then top semantic results for the rest
+  const titleChunks = allChunks
+    .filter(c => c.titleMatch)
+    .sort((a, b) => b.sim - a.sim)
+    .slice(0, ASK_TOP_CHUNKS);
+
+  const seen = new Set(titleChunks.map(c => c.payload.text));
+  const semanticChunks = allChunks
+    .filter(c => !c.titleMatch && !seen.has(c.payload.text))
+    .sort((a, b) => b.sim - a.sim)
+    .slice(0, ASK_TOP_CHUNKS - titleChunks.length);
+
+  return [...titleChunks, ...semanticChunks].map(c => c.payload);
 }
 
 function newChat() {
@@ -246,16 +306,24 @@ function newChat() {
   document.getElementById('askInput').focus();
 }
 
-function appendMessage(role, content, sources) {
+function appendMessage(role, content, cited, listSermons) {
   const el = document.createElement('div');
   el.className = `msg ${role}`;
-  const sourcesHtml = (sources && sources.length)
-    ? `<div class="msg-sources">${sources.map(s =>
-        `<a class="source-chip" href="${esc(s.audio_url)}" target="_blank" rel="noopener">
-          ${audioIcon} ${esc(s.title)} <span style="opacity:0.6">${esc(s.date)}</span>
-        </a>`).join('')}</div>`
-    : '';
-  el.innerHTML = `<div class="msg-bubble">${esc(content)}</div>${sourcesHtml}`;
+  let extra = '';
+  if (listSermons && listSermons.length) {
+    const rows = listSermons.map(s =>
+      `<tr><td>${esc(s.date)}</td><td>${s.audio_url
+        ? `<a href="${esc(s.audio_url)}" target="_blank" rel="noopener">${esc(s.title)}</a>`
+        : esc(s.title)}</td></tr>`
+    ).join('');
+    extra = `<table class="sermon-table"><thead><tr><th>Date</th><th>Title</th></tr></thead><tbody>${rows}</tbody></table>`;
+  } else if (cited && cited.length) {
+    extra = `<div class="msg-sources">${cited.map(s =>
+      `<a class="source-chip" href="${esc(s.audio_url)}" target="_blank" rel="noopener">
+        ${audioIcon} ${esc(s.title)} <span style="opacity:0.6">${esc(s.date)}</span>
+      </a>`).join('')}</div>`;
+  }
+  el.innerHTML = `<div class="msg-bubble">${role === 'assistant' ? renderMarkdown(content) : esc(content)}</div>${extra}`;
   document.getElementById('chatMessages').appendChild(el);
   el.scrollIntoView({ behavior: 'smooth', block: 'end' });
   return el;
@@ -304,7 +372,7 @@ async function submitQuestion() {
     if (data.error) throw new Error(data.error);
 
     typingEl.remove();
-    appendMessage('assistant', data.answer, data.sources);
+    appendMessage('assistant', data.answer, data.cited_sermons, data.list_sermons);
     conversationHistory.push({ role: 'assistant', content: data.answer });
 
   } catch (err) {
@@ -326,7 +394,52 @@ document.getElementById('askInput').addEventListener('keydown', e => {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitQuestion(); }
 });
 
-document.getElementById('askInput').focus();
+const askInput = document.getElementById('askInput');
+function updatePlaceholder() {
+  askInput.placeholder = window.innerWidth <= 600
+    ? askInput.dataset.placeholderMobile
+    : askInput.dataset.placeholderDesktop;
+}
+updatePlaceholder();
+window.addEventListener('resize', updatePlaceholder);
+askInput.focus();
+
+// ── Voice input ───────────────────────────────────────────────────────────────
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+if (SpeechRecognition) {
+  const micBtn = document.getElementById('micBtn');
+  micBtn.style.display = 'flex';
+  const recognition = new SpeechRecognition();
+  recognition.lang = 'en-US';
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+  let listening = false;
+
+  micBtn.addEventListener('click', () => {
+    if (listening) { recognition.stop(); return; }
+    recognition.start();
+  });
+
+  recognition.onstart = () => {
+    listening = true;
+    micBtn.classList.add('listening');
+    setHint('Listening…');
+  };
+  recognition.onresult = (e) => {
+    const transcript = e.results[0][0].transcript;
+    const input = document.getElementById('askInput');
+    input.value = transcript;
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 140) + 'px';
+    setHint('');
+    submitQuestion();
+  };
+  recognition.onerror = () => { setHint(''); };
+  recognition.onend = () => {
+    listening = false;
+    micBtn.classList.remove('listening');
+  };
+}
 </script>
 </body>
 </html>"""

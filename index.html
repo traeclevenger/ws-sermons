@@ -10,7 +10,7 @@
     --bg: #0d1210; --surface: #141c18; --surface2: #1d2820;
     --accent: #96aa9e; --accent2: #6a7e72;
     --text: #eaedea; --subtext: #7a9082; --border: #2a3830;
-    --radius: 14px; --header-h: 96px;
+    --radius: 14px; --header-h: 68px;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { height: 100%; height: 100dvh; }
@@ -18,11 +18,11 @@
 
   header {
     background: #fff; border-bottom: 1px solid #d8d8d8;
-    padding: 14px 20px 12px; flex-shrink: 0;
+    padding: 8px 20px; flex-shrink: 0;
     box-shadow: 0 2px 12px rgba(0,0,0,0.12);
     display: flex; align-items: center; justify-content: flex-start;
   }
-  .site-logo { height: 80px; width: auto; display: block; }
+  .site-logo { height: 52px; width: auto; display: block; }
 
   .chat-wrap {
     flex: 1; overflow: hidden; display: flex; flex-direction: column;
@@ -94,8 +94,8 @@
   @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
 
   @media (max-width: 600px) {
-    header { padding: 10px 14px; }
-    .site-logo { height: 60px; }
+    header { padding: 6px 14px; }
+    .site-logo { height: 40px; }
     .chat-wrap { padding: 0 12px; }
     .page-title { font-size: 1.35rem; padding: 12px 0 4px; }
     .msg { max-width: 92%; }
@@ -412,6 +412,24 @@ function esc(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+function renderMarkdown(text) {
+  const lines = esc(text).split('\n');
+  const out = [];
+  let inList = false;
+  for (const line of lines) {
+    const bullet = line.match(/^(\s*[-*]|\s*\d+\.)\s+(.*)/);
+    if (bullet) {
+      if (!inList) { out.push('<ul>'); inList = true; }
+      out.push(`<li>${bullet[2]}</li>`);
+    } else {
+      if (inList) { out.push('</ul>'); inList = false; }
+      out.push(line === '' ? '<br>' : `<span>${line}</span><br>`);
+    }
+  }
+  if (inList) out.push('</ul>');
+  return out.join('');
+}
+
 function setHint(msg) { document.getElementById('chatHint').textContent = msg; }
 
 function cosineSim(a, b) {
@@ -508,7 +526,7 @@ function appendMessage(role, content, cited, listSermons) {
         ${audioIcon} ${esc(s.title)} <span style="opacity:0.6">${esc(s.date)}</span>
       </a>`).join('')}</div>`;
   }
-  el.innerHTML = `<div class="msg-bubble">${esc(content)}</div>${extra}`;
+  el.innerHTML = `<div class="msg-bubble">${role === 'assistant' ? renderMarkdown(content) : esc(content)}</div>${extra}`;
   document.getElementById('chatMessages').appendChild(el);
   el.scrollIntoView({ behavior: 'smooth', block: 'end' });
   return el;

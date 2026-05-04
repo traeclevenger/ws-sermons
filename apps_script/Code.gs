@@ -33,12 +33,18 @@ function doPost(e) {
     const systemPrompt =
       "You are a helpful assistant for Westside church of Christ. " +
       "You help members explore and understand the church's sermon library. " +
-      "Be conversational, warm, and concise. Maintain context across the conversation.\n\n" +
+      "Be conversational, warm, and concise. Maintain context across the conversation. " +
+      "You may use bullet lists (lines starting with - ) when listing points or items. " +
+      "Do not use any other Markdown formatting — no asterisks for bold, no headers. Plain text otherwise.\n\n" +
       "## Available sermons\n" + catalogueText + "\n\n" +
       "## Relevant excerpts for the latest question\n" + contextText + "\n\n" +
       "Use the sermon list to answer browsing questions (what's available, filter by topic/date/speaker). " +
       "Use the excerpts to answer detailed content questions. " +
-      "If the excerpts don't support a claim, say so honestly rather than speculating.";
+      "If the excerpts don't support a claim, say so honestly rather than speculating.\n\n" +
+      "IMPORTANT: Respond only with a JSON object — no text outside the JSON:\n" +
+      "{\"answer\":\"your plain-text response\",\"cited_sermons\":[\"exact sermon title\"],\"list_sermons\":[{\"date\":\"YYYY-MM-DD\",\"title\":\"exact sermon title\"}]}\n" +
+      "- cited_sermons: exact titles of sermons you specifically reference or quote in your answer. Empty array if none.\n" +
+      "- list_sermons: populated ONLY when your answer is presenting a list or catalogue of sermons. Empty array otherwise.";
 
     const apiKey = PropertiesService.getScriptProperties().getProperty("ANTHROPIC_API_KEY");
     if (!apiKey) throw new Error("ANTHROPIC_API_KEY not set in Script Properties.");
@@ -62,15 +68,42 @@ function doPost(e) {
     const result = JSON.parse(response.getContentText());
     if (result.error) throw new Error(result.error.message);
 
-    const answer = result.content[0].text;
+    const rawText = result.content[0].text.trim();
+    let answerText = rawText, citedTitles = [], listSermonData = [];
+    try {
+      const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+      const parsed = JSON.parse(jsonMatch[0]);
+      answerText = parsed.answer || rawText;
+      citedTitles = parsed.cited_sermons || [];
+      listSermonData = parsed.list_sermons || [];
+      // Handle double-encoded JSON (answer field itself is a JSON string)
+      if (typeof answerText === 'string' && answerText.trim().startsWith('{')) {
+        try {
+          const inner = JSON.parse(answerText);
+          if (inner.answer) {
+            answerText = inner.answer;
+            if (inner.cited_sermons) citedTitles = inner.cited_sermons;
+            if (inner.list_sermons) listSermonData = inner.list_sermons;
+          }
+        } catch(e2) {}
+      }
+    } catch(e) { /* fallback to raw text */ }
 
-    // Deduplicated source list
-    const seen = new Set();
-    const sources = chunks
-      .filter(c => { const k = c.audio_url; if (seen.has(k)) return false; seen.add(k); return true; })
-      .map(c => ({ title: c.sermon_title, date: c.date, speaker: c.speaker, audio_url: c.audio_url }));
+    // Build title → sermon lookup from index
+    const titleMap = {};
+    sermonIndex.forEach(s => { titleMap[s.title] = s; });
 
-    return respond({ answer, sources });
+    const citedSermons = citedTitles
+      .map(t => titleMap[t])
+      .filter(Boolean)
+      .map(s => ({ title: s.title, date: s.date, audio_url: s.audioUrl }));
+
+    const listSermons = listSermonData.map(s => {
+      const idx = titleMap[s.title];
+      return { date: s.date, title: s.title, audio_url: idx ? idx.audioUrl : null };
+    });
+
+    return respond({ answer: answerText, cited_sermons: citedSermons, list_sermons: listSermons });
 
   } catch (err) {
     return respond({ error: err.message });
