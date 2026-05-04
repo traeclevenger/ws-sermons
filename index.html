@@ -513,14 +513,23 @@ async function getTopChunks(question) {
     }
   }
 
-  // If one sermon is clearly the best match, send ALL its chunks for full outlines/summaries
+  // If one sermon is clearly the best match, send ALL its chunks for full outlines/summaries.
+  // Use title score as gate, then semantic similarity as tiebreaker within tied groups.
   if (sermonScoreMap.size > 0) {
-    const sorted = [...sermonScoreMap.entries()].sort((a, b) => b[1] - a[1]);
-    const [topTitle, topScore] = sorted[0];
-    const secondScore = sorted[1]?.[1] ?? 0;
-    if (topScore >= 0.15 && topScore - secondScore >= 0.15) {
-      // Send all chunks in original chronological order for full outlines/summaries
-      const targetSermon = SERMONS.find(s => s.title === topTitle);
+    // Compute average chunk cosine similarity per title-matched sermon
+    const sermonAvgSim = new Map();
+    for (const title of sermonScoreMap.keys()) {
+      const chunks = allChunks.filter(c => c.payload.sermon_title === title);
+      sermonAvgSim.set(title, chunks.reduce((s, c) => s + c.sim, 0) / (chunks.length || 1));
+    }
+    // Combined score: title match fraction + semantic similarity (weighted 3x)
+    const combined = [...sermonScoreMap.entries()]
+      .map(([title, tScore]) => ({ title, score: tScore + (sermonAvgSim.get(title) || 0) * 3 }))
+      .sort((a, b) => b.score - a.score);
+    const topScore = combined[0].score;
+    const secondScore = combined[1]?.score ?? 0;
+    if (topScore - secondScore >= 0.05) {
+      const targetSermon = SERMONS.find(s => s.title === combined[0].title);
       return targetSermon.chunks
         .filter(c => c.emb)
         .map(c => ({ text: c.text, sermon_title: targetSermon.title, date: targetSermon.date, speaker: targetSermon.speaker, audio_url: targetSermon.audioUrl }));
