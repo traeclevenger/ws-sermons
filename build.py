@@ -311,11 +311,12 @@ async function getTopChunks(question) {
     const sorted = [...sermonScoreMap.entries()].sort((a, b) => b[1] - a[1]);
     const [topTitle, topScore] = sorted[0];
     const secondScore = sorted[1]?.[1] ?? 0;
-    if (topScore >= 0.5 && topScore - secondScore >= 0.15) {
-      return allChunks
-        .filter(c => c.payload.sermon_title === topTitle)
-        .sort((a, b) => b.sim - a.sim)
-        .map(c => c.payload);
+    if (topScore >= 0.15 && topScore - secondScore >= 0.15) {
+      // Send all chunks in original chronological order for full outlines/summaries
+      const targetSermon = SERMONS.find(s => s.title === topTitle);
+      return targetSermon.chunks
+        .filter(c => c.emb)
+        .map(c => ({ text: c.text, sermon_title: targetSermon.title, date: targetSermon.date, speaker: targetSermon.speaker, audio_url: targetSermon.audioUrl }));
     }
   }
 
