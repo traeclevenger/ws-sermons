@@ -55,6 +55,16 @@
     transition: all 0.15s;
   }
   .source-chip:hover { background: rgba(150,170,158,0.2); border-color: var(--accent2); }
+  .extra-toggle {
+    margin-top: 6px; background: none; border: none; cursor: pointer;
+    font-size: 0.75rem; color: var(--subtext); padding: 2px 0;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .extra-toggle:hover { color: var(--accent); }
+  .extra-toggle svg { transition: transform 0.2s; }
+  .extra-toggle.open svg { transform: rotate(180deg); }
+  .extra-body { display: none; }
+  .extra-body.open { display: block; }
 
   .sermon-table { margin-top: 10px; border-collapse: collapse; font-size: 0.82rem; width: 100%; table-layout: auto; }
   .sermon-table th { text-align: left; padding: 5px 10px; color: var(--subtext); border-bottom: 1px solid var(--border); font-weight: 600; white-space: nowrap; }
@@ -432,6 +442,15 @@ function renderMarkdown(text) {
 
 function setHint(msg) { document.getElementById('chatHint').textContent = msg; }
 
+function toggleExtra(btn) {
+  const open = btn.classList.toggle('open');
+  btn.nextElementSibling.classList.toggle('open', open);
+  const n = btn.dataset.count;
+  const label = `${open ? 'Hide' : 'Show'} ${n} sermon${n != 1 ? 's' : ''}`;
+  const svg = btn.querySelector('svg').outerHTML;
+  btn.innerHTML = label + ' ' + svg;
+}
+
 function cosineSim(a, b) {
   let dot = 0; for (let i = 0; i < a.length; i++) dot += a[i] * b[i]; return dot;
 }
@@ -512,20 +531,25 @@ function newChat() {
 function appendMessage(role, content, cited, listSermons) {
   const el = document.createElement('div');
   el.className = `msg ${role}`;
-  let extra = '';
+  let extraBody = '', count = 0;
   if (listSermons && listSermons.length) {
+    count = listSermons.length;
     const rows = listSermons.map(s =>
       `<tr><td>${esc(s.date)}</td><td>${s.audio_url
         ? `<a href="${esc(s.audio_url)}" target="_blank" rel="noopener">${esc(s.title)}</a>`
         : esc(s.title)}</td></tr>`
     ).join('');
-    extra = `<table class="sermon-table"><thead><tr><th>Date</th><th>Title</th></tr></thead><tbody>${rows}</tbody></table>`;
+    extraBody = `<table class="sermon-table"><thead><tr><th>Date</th><th>Title</th></tr></thead><tbody>${rows}</tbody></table>`;
   } else if (cited && cited.length) {
-    extra = `<div class="msg-sources">${cited.map(s =>
+    count = cited.length;
+    extraBody = `<div class="msg-sources">${cited.map(s =>
       `<a class="source-chip" href="${esc(s.audio_url)}" target="_blank" rel="noopener">
         ${audioIcon} ${esc(s.title)} <span style="opacity:0.6">${esc(s.date)}</span>
       </a>`).join('')}</div>`;
   }
+  const extra = count > 0
+    ? `<button class="extra-toggle" data-count="${count}" onclick="toggleExtra(this)">Show ${count} sermon${count !== 1 ? 's' : ''} <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6,9 12,15 18,9"/></svg></button><div class="extra-body">${extraBody}</div>`
+    : '';
   el.innerHTML = `<div class="msg-bubble">${role === 'assistant' ? renderMarkdown(content) : esc(content)}</div>${extra}`;
   document.getElementById('chatMessages').appendChild(el);
   el.scrollIntoView({ behavior: 'smooth', block: 'end' });
