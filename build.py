@@ -283,7 +283,7 @@ async function getTopChunks(question) {
     : question;
   const queryVec = await embedFn(augmentedQuery);
 
-  // Score each sermon: fraction of its title words (>3 chars) found in search text + bonuses
+  // Score each sermon against question text (weighted heavily) + assistant context (weak signal)
   const questionLower = question.toLowerCase();
   const assistantLower = lastAssistant ? lastAssistant.content.toLowerCase() : '';
   const searchText = questionLower + ' ' + assistantLower;
@@ -291,7 +291,10 @@ async function getTopChunks(question) {
   const sermonScoreMap = new Map();
   for (const s of SERMONS) {
     const words = s.title.toLowerCase().split(/\s+/).filter(w => w.length > 3);
-    const titleScore = words.length ? words.filter(w => searchText.includes(w)).length / words.length : 0;
+    // Weight question matches 5x over assistant-context-only matches
+    const titleScoreQ = words.length ? words.filter(w => questionLower.includes(w)).length / words.length : 0;
+    const titleScoreA = words.length ? words.filter(w => !questionLower.includes(w) && assistantLower.includes(w)).length / words.length : 0;
+    const titleScore = titleScoreQ * 1.0 + titleScoreA * 0.2;
     const sermonMonth = monthNames[parseInt(s.date.slice(5,7)) - 1];
     const dateBonus = searchText.includes(sermonMonth) ? 0.25 : 0;
     // Speaker bonus: strong if speaker named in the question, weak if only in assistant context
