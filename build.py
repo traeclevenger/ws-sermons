@@ -283,8 +283,10 @@ async function getTopChunks(question) {
     : question;
   const queryVec = await embedFn(augmentedQuery);
 
-  // Score each sermon: fraction of its title words (>3 chars) found in search text + date bonus
-  const searchText = question.toLowerCase() + ' ' + (lastAssistant ? lastAssistant.content.toLowerCase() : '');
+  // Score each sermon: fraction of its title words (>3 chars) found in search text + bonuses
+  const questionLower = question.toLowerCase();
+  const assistantLower = lastAssistant ? lastAssistant.content.toLowerCase() : '';
+  const searchText = questionLower + ' ' + assistantLower;
   const monthNames = ['january','february','march','april','may','june','july','august','september','october','november','december'];
   const sermonScoreMap = new Map();
   for (const s of SERMONS) {
@@ -292,7 +294,11 @@ async function getTopChunks(question) {
     const titleScore = words.length ? words.filter(w => searchText.includes(w)).length / words.length : 0;
     const sermonMonth = monthNames[parseInt(s.date.slice(5,7)) - 1];
     const dateBonus = searchText.includes(sermonMonth) ? 0.25 : 0;
-    const score = titleScore + dateBonus;
+    // Speaker bonus: strong if speaker named in the question, weak if only in assistant context
+    const speakerLower = s.speaker.toLowerCase();
+    const speakerBonus = questionLower.includes(speakerLower) ? 0.8
+      : assistantLower.includes(speakerLower) ? 0.1 : 0;
+    const score = titleScore + dateBonus + speakerBonus;
     if (score > 0) sermonScoreMap.set(s.title, score);
   }
 
