@@ -289,6 +289,7 @@ async function getTopChunks(question) {
   const searchText = questionLower + ' ' + assistantLower;
   const monthNames = ['january','february','march','april','may','june','july','august','september','october','november','december'];
   const sermonScoreMap = new Map();
+  const titleScoreQMap = new Map();
   for (const s of SERMONS) {
     const words = s.title.toLowerCase().split(/\s+/).filter(w => w.length > 3);
     // Weight question matches 5x over assistant-context-only matches
@@ -303,6 +304,30 @@ async function getTopChunks(question) {
       : assistantLower.includes(speakerLower) ? 0.1 : 0;
     const score = titleScore + dateBonus + speakerBonus;
     if (score > 0) sermonScoreMap.set(s.title, score);
+    titleScoreQMap.set(s.title, titleScoreQ);
+  }
+
+  // Positional reference detection: "the last one", "the first sermon", "that one", etc.
+  // Fires when the user's question contains no title words (pronoun/positional reference)
+  const noQuestionTitleMatch = [...titleScoreQMap.values()].every(v => v === 0);
+  if (noQuestionTitleMatch && assistantLower) {
+    // Find sermons mentioned in the last assistant reply, in order of appearance
+    const mentioned = SERMONS
+      .map(s => ({ title: s.title, pos: assistantLower.indexOf(s.title.toLowerCase()) }))
+      .filter(s => s.pos >= 0)
+      .sort((a, b) => a.pos - b.pos);
+    if (mentioned.length > 0) {
+      let target = null;
+      if (/\blast\b/i.test(question))        target = mentioned[mentioned.length - 1].title;
+      else if (/\bfirst\b/i.test(question))  target = mentioned[0].title;
+      else if (/\bthird\b/i.test(question))  target = mentioned[2]?.title;
+      else if (/\bsecond\b/i.test(question)) target = mentioned[1]?.title;
+      else if (mentioned.length === 1)        target = mentioned[0].title;
+      // "that one", "it", "the one" with only 1 sermon in context → same as single mention
+      else if (/\b(that|this|the one)\b/i.test(question) && mentioned.length <= 3)
+        target = mentioned[mentioned.length - 1].title;
+      if (target) sermonScoreMap.set(target, (sermonScoreMap.get(target) || 0) + 1.5);
+    }
   }
 
   const allChunks = [];
