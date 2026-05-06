@@ -200,7 +200,6 @@ html = r"""<!DOCTYPE html>
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22,2 15,22 11,13 2,9"/></svg>
     </button>
   </div>
-  <div id="sessionFooter" style="font-size:0.65rem;color:var(--subtext);text-align:center;padding:2px 0 4px;opacity:0.5;user-select:all;cursor:default;"></div>
 </div>
 
 <script>
@@ -214,7 +213,6 @@ const SESSION_ID = (() => {
   if (!id) { id = crypto.randomUUID(); localStorage.setItem('ws_session_id', id); }
   return id;
 })();
-document.getElementById('sessionFooter').textContent = 'Session: ' + SESSION_ID;
 
 const TRANSFORMERS_CDN = 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
 const EMBED_MODEL = 'Xenova/all-MiniLM-L6-v2';
