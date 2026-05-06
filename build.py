@@ -225,14 +225,22 @@ function renderMarkdown(text) {
   const lines = esc(text).split('\n');
   const out = [];
   let inList = false;
-  for (const line of lines) {
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
     const bullet = line.match(/^(\s*[-*]|\s*\d+\.)\s+(.*)/);
     if (bullet) {
       if (!inList) { out.push('<ul>'); inList = true; }
       out.push(`<li>${bullet[2]}</li>`);
     } else {
       if (inList) { out.push('</ul>'); inList = false; }
-      out.push(line === '' ? '<br>' : `<span>${line}</span><br>`);
+      if (line === '') {
+        // Skip blank lines immediately before a bullet list to avoid double spacing
+        const next = lines[i + 1];
+        if (next && next.match(/^(\s*[-*]|\s*\d+\.)\s+/)) continue;
+        out.push('<br>');
+      } else {
+        out.push(`<span>${line}</span><br>`);
+      }
     }
   }
   if (inList) out.push('</ul>');
