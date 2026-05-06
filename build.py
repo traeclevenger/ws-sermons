@@ -207,6 +207,13 @@ SERMONS_DATA_PLACEHOLDER
 SERMON_INDEX_PLACEHOLDER
 APPS_SCRIPT_URL_PLACEHOLDER
 
+// Persistent session ID to approximate unique users in analytics
+const SESSION_ID = (() => {
+  let id = localStorage.getItem('ws_session_id');
+  if (!id) { id = crypto.randomUUID(); localStorage.setItem('ws_session_id', id); }
+  return id;
+})();
+
 const TRANSFORMERS_CDN = 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
 const EMBED_MODEL = 'Xenova/all-MiniLM-L6-v2';
 const SEMANTIC_THRESHOLD = 0.30;
@@ -463,7 +470,7 @@ async function submitQuestion() {
     const res = await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ messages: claudeMessages, chunks, sermonIndex: SERMON_INDEX }),
+      body: JSON.stringify({ messages: claudeMessages, chunks, sermonIndex: SERMON_INDEX, sessionId: SESSION_ID }),
     });
 
     if (!res.ok) throw new Error(`Request failed: ${res.status}`);

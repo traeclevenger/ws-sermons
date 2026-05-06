@@ -5,7 +5,7 @@
 //   Apps Script → Project Settings → Script Properties
 //   Add property: ANTHROPIC_API_KEY = sk-ant-...
 
-const CLAUDE_MODEL = "claude-haiku-4-5-20251001";
+const CLAUDE_MODEL = "claude-sonnet-4-6";
 const MAX_CONTEXT_CHUNKS = 60;
 const MAX_HISTORY_MESSAGES = 20; // keep last 10 turns
 
@@ -15,6 +15,8 @@ function doPost(e) {
     const messages     = (body.messages     || []).slice(-MAX_HISTORY_MESSAGES);
     const chunks       = (body.chunks       || []).slice(0, MAX_CONTEXT_CHUNKS);
     const sermonIndex  = (body.sermonIndex  || []);
+    const sessionId    = body.sessionId || "unknown";
+    const question     = messages.length ? messages[messages.length - 1].content : "";
 
     if (!messages.length) return respond({ error: "No messages provided." });
 
@@ -35,6 +37,7 @@ function doPost(e) {
       "You help members explore and understand the church's sermon library. " +
       "Be warm but concise — give short, direct answers. Do not volunteer extra background or context unless the user asks for it. " +
       "Maintain context across the conversation. " +
+      "Only answer questions related to Westside's sermon library, the sermons themselves, or general church topics. If the user asks about anything unrelated — such as weather, cooking, news, or other off-topic subjects — politely let them know you can only help with questions about Westside's sermons. " +
       "Sermon excerpts are transcripts of spoken sermons — informal speech, not written outlines. " +
       "When asked for an outline, summary, or main points, actively synthesize and structure the content from the excerpts provided. Do not say you lack enough information if excerpts are present — work with what is there. " +
       "You may use bullet lists (lines starting with - ) when listing points or items. " +
@@ -92,6 +95,9 @@ function doPost(e) {
       }
     } catch(e) { /* fallback to raw text */ }
 
+    // Log usage
+    logUsage(sessionId, question);
+
     // Build title → sermon lookup from index
     const titleMap = {};
     sermonIndex.forEach(s => { titleMap[s.title] = s; });
@@ -111,6 +117,29 @@ function doPost(e) {
   } catch (err) {
     return respond({ error: err.message });
   }
+}
+
+function logUsage(sessionId, question) {
+  try {
+    const props = PropertiesService.getScriptProperties();
+    let sheetId = props.getProperty("ANALYTICS_SHEET_ID");
+    let ss;
+    if (!sheetId) {
+      ss = SpreadsheetApp.create("WS Sermons Usage");
+      const sheet = ss.getActiveSheet();
+      sheet.setName("Usage");
+      sheet.appendRow(["Timestamp", "Session ID", "Question"]);
+      sheet.setFrozenRows(1);
+      props.setProperty("ANALYTICS_SHEET_ID", ss.getId());
+    } else {
+      ss = SpreadsheetApp.openById(sheetId);
+    }
+    ss.getSheetByName("Usage").appendRow([
+      new Date().toISOString(),
+      sessionId,
+      question.slice(0, 300)
+    ]);
+  } catch(e) { /* don't let logging failure break the response */ }
 }
 
 function respond(data) {
