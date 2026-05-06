@@ -123,12 +123,14 @@ function logUsage(sessionId, question) {
   try {
     const props = PropertiesService.getScriptProperties();
     let sheetId = props.getProperty("ANALYTICS_SHEET_ID");
+    const ownerIds = (props.getProperty("OWNER_SESSION_IDS") || "").split(",").map(s => s.trim()).filter(Boolean);
+    const isOwner = ownerIds.includes(sessionId);
     let ss;
     if (!sheetId) {
       ss = SpreadsheetApp.create("WS Sermons Usage");
       const sheet = ss.getActiveSheet();
       sheet.setName("Usage");
-      sheet.appendRow(["Timestamp", "Session ID", "Question"]);
+      sheet.appendRow(["Timestamp", "Session ID", "Owner", "Question"]);
       sheet.setFrozenRows(1);
       props.setProperty("ANALYTICS_SHEET_ID", ss.getId());
     } else {
@@ -137,6 +139,7 @@ function logUsage(sessionId, question) {
     ss.getSheetByName("Usage").appendRow([
       new Date().toISOString(),
       sessionId,
+      isOwner ? "yes" : "",
       question.slice(0, 300)
     ]);
   } catch(e) { /* don't let logging failure break the response */ }
