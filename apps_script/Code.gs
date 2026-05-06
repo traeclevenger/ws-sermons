@@ -20,6 +20,22 @@ function doPost(e) {
 
     if (!messages.length) return respond({ error: "No messages provided." });
 
+    // Pre-compute counts so the model doesn't have to count manually
+    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const yearMonthCounts = {};
+    sermonIndex.forEach(s => {
+      const y = s.date.slice(0, 4);
+      const m = parseInt(s.date.slice(5, 7)) - 1;
+      if (!yearMonthCounts[y]) yearMonthCounts[y] = {};
+      yearMonthCounts[y][monthNames[m]] = (yearMonthCounts[y][monthNames[m]] || 0) + 1;
+    });
+    const statsLines = Object.entries(yearMonthCounts).sort().map(([y, months]) => {
+      const total = Object.values(months).reduce((a, b) => a + b, 0);
+      const breakdown = Object.entries(months).map(([m, n]) => `${m}:${n}`).join(' ');
+      return `${y} (${total} total): ${breakdown}`;
+    });
+    const statsText = `Total: ${sermonIndex.length} sermons.\n` + statsLines.join('\n');
+
     // Full sermon catalogue (for listing/browsing questions)
     const catalogueText = sermonIndex.length
       ? sermonIndex.map(s => `• ${s.date} — "${s.title}" (${s.speaker})`).join("\n")
@@ -42,6 +58,7 @@ function doPost(e) {
       "When asked for an outline, summary, or main points, actively synthesize and structure the content from the excerpts provided. Do not say you lack enough information if excerpts are present — work with what is there. " +
       "You may use bullet lists (lines starting with - ) when listing points or items. " +
       "Do not use any other Markdown formatting — no asterisks for bold, no headers. Plain text otherwise.\n\n" +
+      "## Sermon library stats\n" + statsText + "\n\n" +
       "## Available sermons\n" + catalogueText + "\n\n" +
       "## Relevant excerpts for the latest question\n" + contextText + "\n\n" +
       "Use the sermon list to answer browsing questions (what's available, filter by topic/date/speaker). " +
@@ -55,7 +72,7 @@ function doPost(e) {
     const apiKey = PropertiesService.getScriptProperties().getProperty("ANTHROPIC_API_KEY");
     if (!apiKey) throw new Error("ANTHROPIC_API_KEY not set in Script Properties.");
 
-    const response = UrlFetchApp.fetch("https://api.anthropic.com/v1/messages", {
+    const fetchPayload = {
       method: "post",
       contentType: "application/json",
       headers: {
@@ -69,9 +86,16 @@ function doPost(e) {
         messages: messages,
       }),
       muteHttpExceptions: true,
-    });
+    };
 
-    const result = JSON.parse(response.getContentText());
+    let response = UrlFetchApp.fetch("https://api.anthropic.com/v1/messages", fetchPayload);
+    let result = JSON.parse(response.getContentText());
+    // Retry once on overloaded errors after a short pause
+    if (result.error && result.error.type === "overloaded_error") {
+      Utilities.sleep(3000);
+      response = UrlFetchApp.fetch("https://api.anthropic.com/v1/messages", fetchPayload);
+      result = JSON.parse(response.getContentText());
+    }
     if (result.error) throw new Error(result.error.message);
 
     const rawText = result.content[0].text.trim();
@@ -107,10 +131,9 @@ function doPost(e) {
       .filter(Boolean)
       .map(s => ({ title: s.title, date: s.date, audio_url: s.audioUrl }));
 
-    const listSermons = listSermonData.map(s => {
-      const idx = titleMap[s.title];
-      return { date: s.date, title: s.title, audio_url: idx ? idx.audioUrl : null };
-    });
+    const listSermons = listSermonData
+      .map(s => { const idx = titleMap[s.title]; return idx ? { date: s.date, title: s.title, audio_url: idx.audioUrl } : null; })
+      .filter(Boolean);
 
     return respond({ answer: answerText, cited_sermons: citedSermons, list_sermons: listSermons });
 
@@ -128,6 +151,14 @@ function logUsage(sessionId, question) {
     let ss;
     if (!sheetId) {
       ss = SpreadsheetApp.create("WS Sermons Usage");
+      // Move to My Drive/Westside/Sermon Transcripts
+      try {
+        const targetFolder = DriveApp.getFoldersByName("Westside").next()
+          .getFoldersByName("Sermon Transcripts").next();
+        const file = DriveApp.getFileById(ss.getId());
+        targetFolder.addFile(file);
+        DriveApp.getRootFolder().removeFile(file);
+      } catch(folderErr) { /* folder not found — leave in root */ }
       const sheet = ss.getActiveSheet();
       sheet.setName("Usage");
       sheet.appendRow(["Timestamp", "Session ID", "Owner", "Question"]);
@@ -149,6 +180,14 @@ function respond(data) {
   return ContentService
     .createTextOutput(JSON.stringify(data))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+// Run this in the Apps Script editor to verify logging is working
+function testLogging() {
+  logUsage("test-session-123", "Test question from testLogging()");
+  const sheetId = PropertiesService.getScriptProperties().getProperty("ANALYTICS_SHEET_ID");
+  const ss = SpreadsheetApp.openById(sheetId);
+  Logger.log("Sheet URL: " + ss.getUrl());
 }
 
 // Test in the Apps Script editor to verify your API key works

@@ -295,16 +295,20 @@ async function loadSemanticModel() {
 async function getTopChunks(question) {
   if (!embedFn) return [];
 
-  // For follow-up questions, augment the query with the last assistant reply
-  const lastAssistant = [...conversationHistory].reverse().find(m => m.role === 'assistant');
-  const augmentedQuery = lastAssistant
-    ? question + ' ' + lastAssistant.content.slice(0, 300)
+  // For follow-up questions, augment the query with recent assistant replies (up to last 3)
+  const recentAssistantText = conversationHistory
+    .slice(-6)
+    .filter(m => m.role === 'assistant')
+    .map(m => m.content)
+    .join(' ');
+  const augmentedQuery = recentAssistantText
+    ? question + ' ' + recentAssistantText.slice(0, 600)
     : question;
   const queryVec = await embedFn(augmentedQuery);
 
   // Score each sermon against question text (weighted heavily) + assistant context (weak signal)
   const questionLower = question.toLowerCase();
-  const assistantLower = lastAssistant ? lastAssistant.content.toLowerCase() : '';
+  const assistantLower = recentAssistantText.toLowerCase();
   const searchText = questionLower + ' ' + assistantLower;
   const monthNames = ['january','february','march','april','may','june','july','august','september','october','november','december'];
   const sermonScoreMap = new Map();
