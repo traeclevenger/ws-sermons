@@ -111,7 +111,7 @@ html = r"""<!DOCTYPE html>
   .msg.user .msg-bubble { background: var(--accent2); color: #fff; border-bottom-right-radius: 4px; }
   .msg.assistant .msg-bubble { background: var(--surface); border: 1px solid var(--border); color: var(--text); border-bottom-left-radius: 4px; }
   .msg-typing .msg-bubble { color: var(--subtext); font-style: italic; }
-  .msg-bubble ul { padding-left: 1.4em; margin: 4px 0; }
+  .msg-bubble ul { padding-left: 1.4em; margin: 0 0 4px 0; }
   .msg-bubble li { margin: 2px 0; }
 
   .msg-sources { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 4px; }
@@ -239,7 +239,11 @@ function renderMarkdown(text) {
         if (next && next.match(/^(\s*[-*]|\s*\d+\.)\s+/)) continue;
         out.push('<br>');
       } else {
-        out.push(`<span>${line}</span><br>`);
+        // Suppress the trailing <br> on lines immediately before a bullet list
+        const next = lines[i + 1];
+        const nextIsBullet = next !== undefined && next.match(/^(\s*[-*]|\s*\d+\.)\s+/);
+        const nextIsBlankThenBullet = next === '' && lines[i + 2] && lines[i + 2].match(/^(\s*[-*]|\s*\d+\.)\s+/);
+        out.push(nextIsBullet || nextIsBlankThenBullet ? `<span>${line}</span>` : `<span>${line}</span><br>`);
       }
     }
   }
