@@ -67,7 +67,8 @@ function doPost(e) {
       "IMPORTANT: Respond only with a JSON object — no text outside the JSON:\n" +
       "{\"answer\":\"your plain-text response\",\"cited_sermons\":[\"exact sermon title\"],\"list_sermons\":[{\"date\":\"YYYY-MM-DD\",\"title\":\"exact sermon title\"}]}\n" +
       "- cited_sermons: exact titles of sermons you specifically reference or quote in your answer. Empty array if none.\n" +
-      "- list_sermons: populated when your answer involves a group, series, or set of sermons — even if the user didn't explicitly ask for a list. For example, if the user asks about a sermon series, include all sermons in that series. Empty array otherwise.";
+      "- list_sermons: populated when your answer involves a group, series, or set of sermons — even if the user didn't explicitly ask for a list. For example, if the user asks about a sermon series, include all sermons in that series. Empty array otherwise.\n" +
+      "IMPORTANT: You do not have direct access to audio URLs — the app resolves them automatically from the titles you return in cited_sermons and list_sermons. Never tell the user you lack links or URLs. Instead, always return the relevant sermon title(s) in cited_sermons or list_sermons and the app will provide the audio links.";
 
     const apiKey = PropertiesService.getScriptProperties().getProperty("ANTHROPIC_API_KEY");
     if (!apiKey) throw new Error("ANTHROPIC_API_KEY not set in Script Properties.");
@@ -120,7 +121,7 @@ function doPost(e) {
     } catch(e) { /* fallback to raw text */ }
 
     // Log usage
-    logUsage(sessionId, question);
+    logUsage(sessionId, question, answerText);
 
     // Build title → sermon lookup from index
     const titleMap = {};
@@ -142,7 +143,7 @@ function doPost(e) {
   }
 }
 
-function logUsage(sessionId, question) {
+function logUsage(sessionId, question, answer) {
   try {
     const props = PropertiesService.getScriptProperties();
     let sheetId = props.getProperty("ANALYTICS_SHEET_ID");
@@ -161,7 +162,7 @@ function logUsage(sessionId, question) {
       } catch(folderErr) { /* folder not found — leave in root */ }
       const sheet = ss.getActiveSheet();
       sheet.setName("Usage");
-      sheet.appendRow(["Timestamp", "Session ID", "Owner", "Question"]);
+      sheet.appendRow(["Timestamp", "Session ID", "Owner", "Question", "Response"]);
       sheet.setFrozenRows(1);
       props.setProperty("ANALYTICS_SHEET_ID", ss.getId());
     } else {
@@ -171,7 +172,8 @@ function logUsage(sessionId, question) {
       new Date().toISOString(),
       sessionId,
       isOwner ? "yes" : "",
-      question.slice(0, 300)
+      question.slice(0, 300),
+      (answer || "").slice(0, 1000)
     ]);
   } catch(e) { /* don't let logging failure break the response */ }
 }
@@ -180,6 +182,89 @@ function respond(data) {
   return ContentService
     .createTextOutput(JSON.stringify(data))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+function sendDailyDigest() {
+  try {
+    const props = PropertiesService.getScriptProperties();
+    const sheetId = props.getProperty("ANALYTICS_SHEET_ID");
+    if (!sheetId) return;
+
+    const ownerIds = (props.getProperty("OWNER_SESSION_IDS") || "").split(",").map(s => s.trim()).filter(Boolean);
+    const ownerEmail = props.getProperty("OWNER_EMAIL") || Session.getEffectiveUser().getEmail();
+
+    const ss = SpreadsheetApp.openById(sheetId);
+    const sheet = ss.getSheetByName("Usage");
+    const data = sheet.getDataRange().getValues();
+
+    // Headers: Timestamp, Session ID, Owner, Question, Response
+    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    // Filter rows from last 24 hours, non-owners only
+    const rows = data.slice(1).filter(row => {
+      const ts = new Date(row[0]);
+      const isOwner = row[2] === "yes";
+      return ts >= cutoff && !isOwner;
+    });
+
+    if (!rows.length) return; // No non-owner activity — skip email
+
+    // Group by session ID, preserving chronological order
+    const sessions = {};
+    const sessionOrder = [];
+    rows.forEach(row => {
+      const sessionId = row[1];
+      if (!sessions[sessionId]) { sessions[sessionId] = []; sessionOrder.push(sessionId); }
+      sessions[sessionId].push({
+        timestamp: new Date(row[0]),
+        question: row[3] || "",
+        response: row[4] || ""
+      });
+    });
+
+    // Build email body
+    const dateStr = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    let body = `Westside Sermons — Daily Usage Digest\n`;
+    body += `${dateStr}\n`;
+    body += `Sessions: ${sessionOrder.length}  |  Questions: ${rows.length}\n`;
+    body += `${'='.repeat(60)}\n\n`;
+
+    sessionOrder.forEach((sessionId, i) => {
+      const turns = sessions[sessionId];
+      const start = turns[0].timestamp.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      body += `SESSION ${i + 1}  (${turns.length} question${turns.length !== 1 ? 's' : ''}  •  started ${start})\n`;
+      body += `${'-'.repeat(60)}\n`;
+      turns.forEach((turn, j) => {
+        body += `Q${j + 1}: ${turn.question}\n\n`;
+        body += `A: ${turn.response}\n\n`;
+      });
+      body += '\n';
+    });
+
+    MailApp.sendEmail({
+      to: ownerEmail,
+      subject: `WS Sermons Usage — ${dateStr}`,
+      body: body.trim()
+    });
+
+  } catch(e) { /* silent fail — don't interrupt anything */ }
+}
+
+// Run once in the Apps Script editor to create the 7am daily trigger
+function setupDailyDigestTrigger() {
+  // Remove any existing daily digest triggers to avoid duplicates
+  ScriptApp.getProjectTriggers()
+    .filter(t => t.getHandlerFunction() === 'sendDailyDigest')
+    .forEach(t => ScriptApp.deleteTrigger(t));
+
+  ScriptApp.newTrigger('sendDailyDigest')
+    .timeBased()
+    .atHour(7)
+    .everyDays(1)
+    .inTimezone(Session.getScriptTimeZone())
+    .create();
+
+  Logger.log('Daily digest trigger created — fires at 7am every day.');
 }
 
 // Run this in the Apps Script editor to verify logging is working
