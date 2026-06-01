@@ -321,8 +321,10 @@ async function getTopChunks(question) {
     const titleScore = titleScoreQ * 1.0 + titleScoreA * 0.2;
     const sermonMonth = monthNames[parseInt(s.date.slice(5,7)) - 1];
     const dateBonus = searchText.includes(sermonMonth) ? 0.25 : 0;
-    // Exact date bonus: strong boost if the sermon's exact date appears in assistant context
-    const exactDateBonus = assistantLower.includes(s.date) ? 0.6 : 0;
+    // Exact date bonus: boost if sermon's date appears in assistant context in any common format
+    const [yr, mo, dy] = s.date.split('-');
+    const humanDate = `${sermonMonth} ${parseInt(dy)}, ${yr}`; // e.g. "may 31, 2026"
+    const exactDateBonus = (assistantLower.includes(s.date) || assistantLower.includes(humanDate)) ? 0.6 : 0;
     // Speaker bonus: strong if speaker named in the question, weak if only in assistant context
     const speakerLower = s.speaker.toLowerCase();
     const speakerBonus = questionLower.includes(speakerLower) ? 0.8
@@ -333,9 +335,10 @@ async function getTopChunks(question) {
   }
 
   // Positional reference detection: "the last one", "the first sermon", "that one", etc.
-  // Fires when the user's question contains no title words (pronoun/positional reference)
+  // Fires when question has no strong title match OR contains an explicit positional word
   const noQuestionTitleMatch = [...titleScoreQMap.values()].every(v => v === 0);
-  if (noQuestionTitleMatch && assistantLower) {
+  const hasPositionalWord = /\b(first|second|third|last)\b/i.test(question);
+  if ((noQuestionTitleMatch || hasPositionalWord) && assistantLower) {
     // Find sermons mentioned in the last assistant reply, in order of appearance
     const mentioned = SERMONS
       .map(s => ({ title: s.title, pos: assistantLower.indexOf(s.title.toLowerCase()) }))
