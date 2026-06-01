@@ -321,11 +321,13 @@ async function getTopChunks(question) {
     const titleScore = titleScoreQ * 1.0 + titleScoreA * 0.2;
     const sermonMonth = monthNames[parseInt(s.date.slice(5,7)) - 1];
     const dateBonus = searchText.includes(sermonMonth) ? 0.25 : 0;
+    // Exact date bonus: strong boost if the sermon's exact date appears in assistant context
+    const exactDateBonus = assistantLower.includes(s.date) ? 0.6 : 0;
     // Speaker bonus: strong if speaker named in the question, weak if only in assistant context
     const speakerLower = s.speaker.toLowerCase();
     const speakerBonus = questionLower.includes(speakerLower) ? 0.8
       : assistantLower.includes(speakerLower) ? 0.1 : 0;
-    const score = titleScore + dateBonus + speakerBonus;
+    const score = titleScore + dateBonus + exactDateBonus + speakerBonus;
     if (score > 0) sermonScoreMap.set(s.title, score);
     titleScoreQMap.set(s.title, titleScoreQ);
   }
