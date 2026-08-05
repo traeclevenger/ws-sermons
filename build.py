@@ -321,13 +321,18 @@ async function getTopChunks(question) {
     const titleScore = titleScoreQ * 1.0 + titleScoreA * 0.2;
     const sermonMonth = monthNames[parseInt(s.date.slice(5,7)) - 1];
     const dateBonus = searchText.includes(sermonMonth) ? 0.25 : 0;
-    // Exact date bonus: boost if sermon's date appears in assistant context in any common format
+    // Exact date bonus: boost if sermon's date appears in question or assistant context
     const [yr, mo, dy] = s.date.split('-');
     const humanDate = `${sermonMonth} ${parseInt(dy)}, ${yr}`; // e.g. "may 31, 2026"
-    const exactDateBonus = (assistantLower.includes(s.date) || assistantLower.includes(humanDate)) ? 0.6 : 0;
-    // Speaker bonus: strong if speaker named in the question, weak if only in assistant context
+    const questionDateMatch = searchText.includes(`${sermonMonth} ${parseInt(dy)}`)
+      || searchText.includes(`${parseInt(mo)}/${parseInt(dy)}`);
+    const exactDateBonus = (assistantLower.includes(s.date) || assistantLower.includes(humanDate) || questionDateMatch) ? 0.6 : 0;
+    // Speaker bonus: strong if full name in question, medium if last name only, weak if only in assistant context
     const speakerLower = s.speaker.toLowerCase();
+    const speakerParts = speakerLower.split(' ');
+    const speakerLastName = speakerParts[speakerParts.length - 1];
     const speakerBonus = questionLower.includes(speakerLower) ? 0.8
+      : (speakerLastName.length > 3 && questionLower.includes(speakerLastName)) ? 0.5
       : assistantLower.includes(speakerLower) ? 0.1 : 0;
     const score = titleScore + dateBonus + exactDateBonus + speakerBonus;
     if (score > 0) sermonScoreMap.set(s.title, score);
